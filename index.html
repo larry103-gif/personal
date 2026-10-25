@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>數字全方位特性 analysis 報告工具</title>
+    <title>數字超級全方位特性分析報告</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif, "Microsoft JhengHei";
@@ -78,7 +78,7 @@
     <h1>🔍 數字超級全方位特性分析報告</h1>
     
     <div class="input-group">
-        <input type="text" id="numberInput" placeholder="請輸入任意整數 (支援正負數與超大數字)...">
+        <input type="text" id="numberInput" placeholder="請輸入任意整數 (支援正負數與超大數字)..." value="10">
         <button onclick="startAnalysis()">開始分析數字</button>
     </div>
     
@@ -235,7 +235,7 @@
     function to_roman(n) {
         if (n < 1n || n > 3999n) return null;
         let num = Number(n);
-        const vals =;
+        const vals = [1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1];
         const syms = ["M", "CM", "D", "CD", "C", "XC", "L", "XL", "X", "IX", "V", "IV", "I"];
         let roman = "";
         for (let i = 0; i < vals.length; i++) {
