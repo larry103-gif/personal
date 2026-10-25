@@ -4,7 +4,6 @@ import random
 import sys
 from collections import Counter
 
-# 解除 Python 對於超大數字轉字串的位數限制
 sys.set_int_max_str_digits(1000000)
 
 # ================= 1. 輔助函數與演算法 =================
