@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>記帳紀錄</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            color: #333;
+            max-width: 650px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1, h2, h3 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+        /* 登入與註冊區塊 */
+        .auth-container {
+            background: #fff;
+            padding: 30px 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            max-width: 420px;
+            margin: 30px auto;
+        }
+        .auth-tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #ecf0f1;
+        }
+        .auth-tab {
+            flex: 1;
+            text-align: center;
+            padding: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            color: #7f8c8d;
+            border-bottom: 3px solid transparent;
+            margin-bottom: -2px;
+        }
+        .auth-tab.active {
+            color: #3498db;
+            border-bottom-color: #3498db;
+        }
+        .step-badge {
+            display: inline-block;
+            background: #e1f0fa;
+            color: #2980b9;
+            font-size: 12px;
+            font-weight: bold;
+            padding: 4px 10px;
+            border-radius: 20px;
+            margin-bottom: 12px;
+        }
+        .verify-box {
+            background: #fff8e1;
+            border: 1px dashed #f39c12;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #8a6d3b;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        .btn-auth {
+            background-color: #3498db;
+            color: white;
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+        .btn-secondary {
+            background-color: #95a5a6;
+            color: white;
+            width: 100%;
+            padding: 10px;
+            font-size: 14px;
+            margin-top: 8px;
+        }
+        /* 頂部使用者資訊列 */
+        .user-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #fff;
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.05);
+            font-size: 14px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .user-info-text {
+            display: flex;
+            flex-direction: column;
+        }
+        .user-display-name {
+            font-weight: bold;
+            font-size: 16px;
+            color: #2c3e50;
+        }
+        .user-email-sub {
+            font-size: 12px;
+            color: #7f8c8d;
+        }
+        .btn-logout {
+            background-color: #95a5a6;
+            color: white;
+            padding: 6px 12px;
+            font-size: 13px;
+        }
+        /* 統計看板區塊 */
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .summary-card {
+            background: #fff;
+            padding: 15px 10px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            text-align: center;
+        }
+        .summary-card .label {
+            font-size: 13px;
+            color: #7f8c8d;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .summary-card .value {
+            font-size: 20px;
+            font-weight: bold;
+        }
+        .val-expense { color: #e74c3c; }
+        .val-income { color: #2ecc71; }
+        .val-pending { color: #f39c12; }
+
+        .control-panel {
+            background: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .date-picker {
+            margin-bottom: 15px;
+        }
+        .date-picker label {
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        input[type="date"] {
+            padding: 8px 12px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        .btn-group {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        button {
+            padding: 10px 16px;
+            font-size: 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: opacity 0.2s;
+        }
+        button:hover {
+            opacity: 0.85;
+        }
+        .btn-expense { background-color: #e74c3c; color: white; }
+        .btn-income { background-color: #2ecc71; color: white; }
+        .btn-reimburse { background-color: #f39c12; color: white; }
+        .btn-export { background-color: #34495e; color: white; width: 100%; margin-top: 15px; }
+        
+        /* 彈出表單與共用輸入框 */
+        .input-modal {
+            display: none;
+            background: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            border-left: 5px solid #3498db;
+        }
+        .form-group {
+            margin-bottom: 14px;
+            text-align: left;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 15px;
+        }
+        .btn-save { background-color: #3498db; color: white; width: 100%; margin-top: 10px; }
+        .btn-cancel { background-color: #95a5a6; color: white; width: 100%; margin-top: 5px; }
+
+        /* 紀錄列表 */
+        .record-list {
+            list-style: none;
+            padding: 0;
+        }
+        .record-item {
+            background: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.05);
+        }
+        .record-info {
+            display: flex;
+            flex-direction: column;
+        }
+        .record-title {
+            font-size: 17px;
+            font-weight: bold;
+        }
+        .record-meta {
+            font-size: 13px;
+            color: #7f8c8d;
+            margin-top: 4px;
+        }
+        .badge {
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: white;
+            margin-right: 5px;
+        }
+        .bg-expense { background-color: #e74c3c; }
+        .bg-income { background-color: #2ecc71; }
+        .bg-reimburse { background-color: #f39c12; }
+        
+        .status-btn {
+            padding: 4px 8px;
+            font-size: 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            border: 1px solid #ccc;
+            background: #ecf0f1;
+            color: #2c3e50;
+            margin-left: 8px;
+        }
+        .status-received {
+            background-color: #d4edda;
+            color: #155724;
+            border-color: #c3e6cb;
+        }
+        .status-pending {
+            background-color: #f8d7da;
+            color: #721c24;
+            border-color: #f5c6cb;
+        }
+        .record-amount {
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .delete-btn {
+            background: none;
+            color: #bdc3c7;
+            font-size: 18px;
+            padding: 0 5px;
+            margin-left: 10px;
+        }
+        .delete-btn:hover { color: #e74c3c; }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+    <!-- 登入 / 註冊畫面 -->
+    <div id="authSection" class="auth-container">
+        <h2 style="margin-top:0;">記帳系統</h2>
+        <div class="auth-tabs">
+            <div class="auth-tab active" id="tabLogin" onclick="switchAuthMode('login')">登入帳號</div>
+            <div class="auth-tab" id="tabRegister" onclick="switchAuthMode('register')">首次註冊 (信箱驗證)</div>
+        </div>
+
+        <!-- 模式 A：一般登入 -->
+        <div id="loginForm">
+            <div class="form-group">
+                <label for="loginEmail">電子郵件 (Email)：</label>
+                <input type="email" id="loginEmail" placeholder="請輸入您的電子郵件">
+            </div>
+            <div class="form-group">
+                <label for="loginPassword">密碼：</label>
+                <input type="password" id="loginPassword" placeholder="請輸入密碼">
+            </div>
+            <button class="btn-auth" onclick="handleLogin()">登入系統</button>
+        </div>
+
+        <!-- 模式 B 步驟 1：輸入並驗證電子郵件 -->
+        <div id="registerStep1" class="hidden">
+            <div class="step-badge">步驟 1 / 2：驗證電子郵件</div>
+            <div class="form-group">
+                <label for="regEmail">請輸入電子郵件：</label>
+                <input type="email" id="regEmail" placeholder="example@gmail.com">
+            </div>
+            <div id="verifyCodeSection" class="hidden">
+                <div class="verify-box" id="verifyHint"></div>
+                <div class="form-group">
+                    <label for="regVerifyCode">輸入 6 位數驗證碼：</label>
+                    <input type="text" id="regVerifyCode" placeholder="請輸入驗證碼" maxlength="6">
+                </div>
+                <button class="btn-auth" onclick="verifyEmailCode()">驗證信箱並下一步</button>
+            </div>
+            <button class="btn-auth" id="sendCodeBtn" onclick="sendVerifyCode()">取得驗證碼</button>
+        </div>
+
+        <!-- 模式 B 步驟 2：信箱通過後，設定自訂名字與密碼 -->
+        <div id="registerStep2" class="hidden">
+            <div class="step-badge">步驟 2 / 2：設定個人資料</div>
+            <div class="form-group">
+                <label>已驗證信箱：</label>
+                <input type="text" id="verifiedEmailDisplay" disabled style="background:#ecf0f1; color:#555;">
+            </div>
+            <div class="form-group">
+                <label for="regDisplayName">自訂名字（顯示於記帳本）：</label>
+                <input type="text" id="regDisplayName" value="許宏斌" placeholder="例如：許宏斌">
+            </div>
+            <div class="form-group">
+                <label for="regPassword">設定密碼：</label>
+                <input type="password" id="regPassword" value="1204" placeholder="請設定登入密碼">
+            </div>
+            <div class="form-group">
+                <label for="regConfirmPassword">再次確認密碼：</label>
+                <input type="password" id="regConfirmPassword" value="1204" placeholder="請再次輸入密碼">
+            </div>
+            <button class="btn-auth" onclick="completeRegistration()">完成註冊並進入記帳</button>
+            <button class="btn-secondary" onclick="switchAuthMode('register')">返回重新輸入信箱</button>
+        </div>
+    </div>
+
+    <!-- 主記帳畫面 (登入後顯示) -->
+    <div id="appSection" class="hidden">
+        <!-- 使用者資訊列 -->
+        <div class="user-bar">
+            <div class="user-info-text">
+                <span class="user-display-name">👋 你好，<span id="displayUserName"></span></span>
+                <span class="user-email-sub" id="displayUserEmail"></span>
+            </div>
+            <button class="btn-logout" onclick="logout()">登出</button>
+        </div>
+
+        <!-- 1. 最上面寫記帳紀錄 -->
+        <h1>記帳紀錄</h1>
+
+        <!-- 自動統計看板 -->
+        <div class="summary-grid">
+            <div class="summary-card">
+                <div class="label">當日總支出</div>
+                <div class="value val-expense" id="totalExpense">$0</div>
+            </div>
+            <div class="summary-card">
+                <div class="label">當日總收入</div>
+                <div class="value val-income" id="totalIncome">$0</div>
+            </div>
+            <div class="summary-card">
+                <div class="label">累積未收款項</div>
+                <div class="value val-pending" id="totalPending">$0</div>
+            </div>
+        </div>
+
+        <!-- 2. 中間有日期可以選 & 新增按鈕 -->
+        <div class="control-panel">
+            <div class="date-picker">
+                <label for="recordDate">選擇日期：</label>
+                <input type="date" id="recordDate">
+            </div>
+            
+            <div class="btn-group">
+                <button class="btn-expense" onclick="openForm('支出')">+ 新增支出</button>
+                <button class="btn-income" onclick="openForm('收入')">+ 新增收入</button>
+                <button class="btn-reimburse" onclick="openForm('報帳')">+ 新增報帳</button>
+            </div>
+
+            <button class="btn-export" onclick="exportToCSV()">📥 一鍵匯出全部紀錄 (Excel / CSV)</button>
+        </div>
+
+        <!-- 詢問品項、價錢與狀態的輸入區 -->
+        <div class="input-modal" id="inputModal">
+            <h3 id="modalTitle" style="margin-top:0;">新增項目</h3>
+            <div class="form-group">
+                <label for="itemName">品項名稱：</label>
+                <input type="text" id="itemName" placeholder="例如：午餐、車資、客戶請款...">
+            </div>
+            <div class="form-group">
+                <label for="itemPrice">價錢 (元)：</label>
+                <input type="number" id="itemPrice" placeholder="請輸入金額">
+            </div>
+            <div class="form-group" id="statusGroup">
+                <label for="paymentStatus">款項狀態：</label>
+                <select id="paymentStatus">
+                    <option value="未拿到">還未拿到錢</option>
+                    <option value="已拿到">已拿到錢</option>
+                </select>
+            </div>
+            <button class="btn-save" onclick="saveRecord()">儲存紀錄</button>
+            <button class="btn-cancel" onclick="closeForm()">取消</button>
+        </div>
+
+        <!-- 紀錄顯示區 -->
+        <ul class="record-list" id="recordList"></ul>
+    </div>
+
+    <script>
+        let currentUserEmail = localStorage.getItem('acc_currentUserEmail') || null;
+        let generatedCode = '';
+        let pendingEmail = '';
+        let currentType = '支出';
+        let records = [];
+
+        const dateInput = document.getElementById('recordDate');
+        dateInput.valueAsDate = new Date();
+        dateInput.addEventListener('change', renderRecords);
+
+        // 取得所有使用者資料 { "email": { name: "許宏斌", password: "1204" } }
+        function getUsers() {
+            return JSON.parse(localStorage.getItem('acc_users_v2')) || {};
+        }
+
+        function saveUsers(users) {
+            localStorage.setItem('acc_users_v2', JSON.stringify(users));
+        }
+
+        // 初始化畫面
+        function initApp() {
+            const users = getUsers();
+            if (currentUserEmail && users[currentUserEmail]) {
+                document.getElementById('authSection').classList.add('hidden');
+                document.getElementById('appSection').classList.remove('hidden');
+                document.getElementById('displayUserName').innerText = users[currentUserEmail].name;
+                document.getElementById('displayUserEmail').innerText = currentUserEmail;
+                records = JSON.parse(localStorage.getItem(`acc_records_${currentUserEmail}`)) || [];
+                renderRecords();
+            } else {
+                currentUserEmail = null;
+                localStorage.removeItem('acc_currentUserEmail');
+                document.getElementById('authSection').classList.remove('hidden');
+                document.getElementById('appSection').classList.add('hidden');
+            }
+        }
+
+        // 切換「登入」與「首次註冊」分頁
+        function switchAuthMode(mode) {
+            document.getElementById('loginForm').classList.add('hidden');
+            document.getElementById('registerStep1').classList.add('hidden');
+            document.getElementById('registerStep2').classList.add('hidden');
+
+            if (mode === 'login') {
+                document.getElementById('tabLogin').classList.add('active');
+                document.getElementById('tabRegister').classList.remove('active');
+                document.getElementById('loginForm').classList.remove('hidden');
+            } else {
+                document.getElementById('tabRegister').classList.add('active');
+                document.getElementById('tabLogin').classList.remove('active');
+                document.getElementById('registerStep1').classList.remove('hidden');
+                // 重置步驟 1 狀態
+                document.getElementById('regEmail').disabled = false;
+                document.getElementById('regEmail').value = '';
+                document.getElementById('regVerifyCode').value = '';
+                document.getElementById('verifyCodeSection').classList.add('hidden');
+                document.getElementById('sendCodeBtn').classList.remove('hidden');
+            }
+        }
+
+        // 步驟 1：檢查電子郵件並產生驗證碼
+        function sendVerifyCode() {
+            const email = document.getElementById('regEmail').value.trim().toLowerCase();
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+            if (!emailRegex.test(email)) {
+                alert('請輸入正確的電子郵件格式（例如：larry103@smail.ilc.edu.tw）！');
+                return;
+            }
+
+            const users = getUsers();
+            if (users[email]) {
+                alert('這個電子郵件已經註冊過了，請直接點「登入帳號」！');
+                return;
+            }
+
+            pendingEmail = email;
+            generatedCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+            document.getElementById('regEmail').disabled = true;
+            document.getElementById('sendCodeBtn').classList.add('hidden');
+            document.getElementById('verifyCodeSection').classList.remove('hidden');
+            document.getElementById('verifyHint').innerHTML = `已模擬發送驗證信至 <b>${email}</b><br>您的驗證碼為：<b style="font-size:18px; color:#d35400;">${generatedCode}</b>`;
+        }
+
+        // 驗證信箱驗證碼
+        function verifyEmailCode() {
+            const inputCode = document.getElementById('regVerifyCode').value.trim();
+            if (inputCode !== generatedCode) {
+                alert('驗證碼輸入錯誤，請再確認一次！');
+                return;
+            }
+
+            // 通過信箱驗證，進入步驟 2 設定自訂名字與密碼
+            document.getElementById('registerStep1').classList.add('hidden');
+            document.getElementById('registerStep2').classList.remove('hidden');
+            document.getElementById('verifiedEmailDisplay').value = pendingEmail;
+        }
+
+        // 步驟 2：完成設定自訂名字與密碼
+        function completeRegistration() {
+            const name = document.getElementById('regDisplayName').value.trim();
+            const password = document.getElementById('regPassword').value;
+            const confirmPassword = document.getElementById('regConfirmPassword').value;
+
+            if (!name) {
+                alert('請輸入您的自訂名字！');
+                return;
+            }
+            if (password.length < 4) {
+                alert('密碼請至少設定 4 個字元！');
+                return;
+            }
+            if (password !== confirmPassword) {
+                alert('兩次輸入的密碼不一致，請重新確認！');
+                return;
+            }
+
+            const users = getUsers();
+            users[pendingEmail] = {
+                name: name,
+                password: password
+            };
+            saveUsers(users);
+
+            alert(`歡迎 ${name}！帳號註冊完成。`);
+            currentUserEmail = pendingEmail;
+            localStorage.setItem('acc_currentUserEmail', currentUserEmail);
+            initApp();
+        }
+
+        // 一般登入
+        function handleLogin() {
+            const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+            const password = document.getElementById('loginPassword').value;
+
+            const users = getUsers();
+            if (!users[email]) {
+                alert('找不到此電子郵件，請先點選上方的「首次註冊 (信箱驗證)」！');
+                return;
+            }
+            if (users[email].password !== password) {
+                alert('密碼錯誤，請重新輸入！');
+                return;
+            }
+
+            currentUserEmail = email;
+            localStorage.setItem('acc_currentUserEmail', currentUserEmail);
+            initApp();
+        }
+
+        // 登出
+        function logout() {
+            if (confirm('確定要登出目前帳號嗎？')) {
+                currentUserEmail = null;
+                localStorage.removeItem('acc_currentUserEmail');
+                document.getElementById('loginPassword').value = '';
+                switchAuthMode('login');
+                initApp();
+            }
+        }
+
+        function saveUserRecords() {
+            if (currentUserEmail) {
+                localStorage.setItem(`acc_records_${currentUserEmail}`, JSON.stringify(records));
+            }
+        }
+
+        function openForm(type) {
+            currentType = type;
+            document.getElementById('modalTitle').innerText = `新增【${type}】`;
+            document.getElementById('itemName').value = '';
+            document.getElementById('itemPrice').value = '';
+            
+            const statusGroup = document.getElementById('statusGroup');
+            if (type === '支出') {
+                statusGroup.style.display = 'none';
+            } else {
+                statusGroup.style.display = 'block';
+                document.getElementById('paymentStatus').value = (type === '收入') ? '已拿到' : '未拿到';
+            }
+            
+            document.getElementById('inputModal').style.display = 'block';
+            document.getElementById('itemName').focus();
+        }
+
+        function closeForm() {
+            document.getElementById('inputModal').style.display = 'none';
+        }
+
+        function saveRecord() {
+            const date = dateInput.value;
+            const name = document.getElementById('itemName').value.trim();
+            const price = parseFloat(document.getElementById('itemPrice').value);
+            const status = (currentType === '支出') ? '不適用' : document.getElementById('paymentStatus').value;
+
+            if (!date || !name || isNaN(price) || price <= 0) {
+                alert('請完整填寫日期、品項與正確的價錢！');
+                return;
+            }
+
+            const newRecord = {
+                id: Date.now(),
+                date: date,
+                type: currentType,
+                name: name,
+                price: price,
+                status: status
+            };
+
+            records.push(newRecord);
+            saveUserRecords();
+            closeForm();
+            renderRecords();
+        }
+
+        function toggleStatus(id) {
+            const record = records.find(r => r.id === id);
+            if (record && record.status !== '不適用') {
+                record.status = (record.status === '已拿到') ? '未拿到' : '已拿到';
+                saveUserRecords();
+                renderRecords();
+            }
+        }
+
+        function deleteRecord(id) {
+            if (confirm('確定要刪除這筆紀錄嗎？')) {
+                records = records.filter(r => r.id !== id);
+                saveUserRecords();
+                renderRecords();
+            }
+        }
+
+        function updateSummary(selectedDate) {
+            let dayExpense = 0;
+            let dayIncome = 0;
+            let allPending = 0;
+
+            records.forEach(r => {
+                if (r.date === selectedDate) {
+                    if (r.type === '支出') dayExpense += r.price;
+                    if (r.type === '收入') dayIncome += r.price;
+                }
+                if (r.status === '未拿到') {
+                    allPending += r.price;
+                }
+            });
+
+            document.getElementById('totalExpense').innerText = `$${dayExpense.toLocaleString()}`;
+            document.getElementById('totalIncome').innerText = `$${dayIncome.toLocaleString()}`;
+            document.getElementById('totalPending').innerText = `$${allPending.toLocaleString()}`;
+        }
+
+        function renderRecords() {
+            const list = document.getElementById('recordList');
+            const selectedDate = dateInput.value;
+            list.innerHTML = '';
+
+            updateSummary(selectedDate);
+
+            const filteredRecords = records.filter(r => r.date === selectedDate);
+
+            if (filteredRecords.length === 0) {
+                list.innerHTML = '<p style="text-align:center; color:#999;">這天還沒有任何記帳紀錄喔！</p>';
+                return;
+            }
+
+            filteredRecords.forEach(r => {
+                let badgeClass = 'bg-expense';
+                let sign = '-';
+                if (r.type === '收入') { badgeClass = 'bg-income'; sign = '+'; }
+                if (r.type === '報帳') { badgeClass = 'bg-reimburse'; sign = ''; }
+
+                let statusHtml = '';
+                if (r.status !== '不適用') {
+                    const statusClass = (r.status === '已拿到') ? 'status-received' : 'status-pending';
+                    statusHtml = `<button class="status-btn ${statusClass}" onclick="toggleStatus(${r.id})" title="點擊切換狀態">${r.status}</button>`;
+                }
+
+                const li = document.createElement('li');
+                li.className = 'record-item';
+                li.innerHTML = `
+                    <div class="record-info">
+                        <div>
+                            <span class="badge ${badgeClass}">${r.type}</span>
+                            <span class="record-title">${r.name}</span>
+                            ${statusHtml}
+                        </div>
+                        <div class="record-meta">${r.date}</div>
+                    </div>
+                    <div>
+                        <span class="record-amount">${sign}$${r.price.toLocaleString()}</span>
+                        <button class="delete-btn" onclick="deleteRecord(${r.id})" title="刪除">×</button>
+                    </div>
+                `;
+                list.appendChild(li);
+            });
+        }
+
+        function exportToCSV() {
+            if (records.length === 0) {
+                alert('目前沒有任何紀錄可以匯出喔！');
+                return;
+            }
+
+            const users = getUsers();
+            const userName = users[currentUserEmail]?.name || currentUserEmail;
+            const sortedRecords = [...records].sort((a, b) => a.date.localeCompare(b.date));
+            let csvContent = "日期,類型,品項名稱,金額,款項狀態\n";
+
+            sortedRecords.forEach(r => {
+                const safeName = `"${r.name.replace(/"/g, '""')}"`;
+                csvContent += `${r.date},${r.type},${safeName},${r.price},${r.status}\n`;
+            });
+
+            const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            
+            const link = document.createElement("a");
+            const today = new Date().toISOString().slice(0, 10);
+            link.setAttribute("href", url);
+            link.setAttribute("download", `記帳報表_${userName}_${today}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+
+        // 啟動程式
+        initApp();
+    </script>
+</body>
+</html>
