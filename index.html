@@ -1,765 +1,522 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>記帳紀錄</title>
-    <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f4f7f6;
-            color: #333;
-            max-width: 650px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        h1, h2, h3 {
-            text-align: center;
-            color: #2c3e50;
-            margin-bottom: 20px;
-        }
-        /* 登入與註冊區塊 */
-        .auth-container {
-            background: #fff;
-            padding: 30px 25px;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
-            max-width: 420px;
-            margin: 30px auto;
-        }
-        .auth-tabs {
-            display: flex;
-            margin-bottom: 20px;
-            border-bottom: 2px solid #ecf0f1;
-        }
-        .auth-tab {
-            flex: 1;
-            text-align: center;
-            padding: 10px;
-            cursor: pointer;
-            font-weight: bold;
-            color: #7f8c8d;
-            border-bottom: 3px solid transparent;
-            margin-bottom: -2px;
-        }
-        .auth-tab.active {
-            color: #3498db;
-            border-bottom-color: #3498db;
-        }
-        .step-badge {
-            display: inline-block;
-            background: #e1f0fa;
-            color: #2980b9;
-            font-size: 12px;
-            font-weight: bold;
-            padding: 4px 10px;
-            border-radius: 20px;
-            margin-bottom: 12px;
-        }
-        .verify-box {
-            background: #fff8e1;
-            border: 1px dashed #f39c12;
-            padding: 10px;
-            border-radius: 6px;
-            font-size: 13px;
-            color: #8a6d3b;
-            margin-bottom: 15px;
-            text-align: center;
-        }
-        .btn-auth {
-            background-color: #3498db;
-            color: white;
-            width: 100%;
-            padding: 12px;
-            font-size: 16px;
-            margin-top: 10px;
-        }
-        .btn-secondary {
-            background-color: #95a5a6;
-            color: white;
-            width: 100%;
-            padding: 10px;
-            font-size: 14px;
-            margin-top: 8px;
-        }
-        /* 頂部使用者資訊列 */
-        .user-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: #fff;
-            padding: 12px 15px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            box-shadow: 0 1px 5px rgba(0,0,0,0.05);
-            font-size: 14px;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-        .user-info-text {
-            display: flex;
-            flex-direction: column;
-        }
-        .user-display-name {
-            font-weight: bold;
-            font-size: 16px;
-            color: #2c3e50;
-        }
-        .user-email-sub {
-            font-size: 12px;
-            color: #7f8c8d;
-        }
-        .btn-logout {
-            background-color: #95a5a6;
-            color: white;
-            padding: 6px 12px;
-            font-size: 13px;
-        }
-        /* 統計看板區塊 */
-        .summary-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-        .summary-card {
-            background: #fff;
-            padding: 15px 10px;
-            border-radius: 10px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-            text-align: center;
-        }
-        .summary-card .label {
-            font-size: 13px;
-            color: #7f8c8d;
-            margin-bottom: 5px;
-            font-weight: bold;
-        }
-        .summary-card .value {
-            font-size: 20px;
-            font-weight: bold;
-        }
-        .val-expense { color: #e74c3c; }
-        .val-income { color: #2ecc71; }
-        .val-pending { color: #f39c12; }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>個人專屬記帳系統</title>
+  <!-- 載入 EmailJS SDK -->
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --text: #1e293b;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --income: #16a34a;
+      --expense: #dc2626;
+    }
+    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", sans-serif; }
+    body { margin: 0; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 24px 16px; }
+    .container { width: 100%; max-width: 720px; }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 24px; box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04); margin-bottom: 20px; }
+    h1, h2, h3 { margin-top: 0; }
+    .hidden { display: none !important; }
+    .form-group { margin-bottom: 14px; }
+    label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 6px; color: var(--text); }
+    input, select { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 15px; outline: none; transition: border-color .15s; }
+    input:focus, select:focus { border-color: var(--primary); }
+    .row { display: flex; gap: 10px; }
+    .row > * { flex: 1; }
+    button { background: var(--primary); color: #fff; border: none; border-radius: 8px; padding: 10px 16px; font-size: 15px; font-weight: 600; cursor: pointer; transition: background .15s; }
+    button:hover { background: var(--primary-hover); }
+    button:disabled { background: #94a3b8; cursor: not-allowed; }
+    button.secondary { background: #e2e8f0; color: var(--text); }
+    button.secondary:hover { background: #cbd5e1; }
+    button.danger { background: #fee2e2; color: var(--expense); padding: 6px 10px; font-size: 13px; }
+    button.danger:hover { background: #fecaca; }
+    .tabs { display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+    .tab-btn { background: transparent; color: var(--muted); padding: 8px 16px; }
+    .tab-btn.active { background: var(--primary); color: #fff; }
+    .msg { font-size: 13px; margin-top: 8px; padding: 8px 12px; border-radius: 6px; }
+    .msg.info { background: #eff6ff; color: #1d4ed8; }
+    .msg.error { background: #fef2f2; color: #dc2626; }
+    .msg.success { background: #f0fdf4; color: #15803d; }
 
-        .control-panel {
-            background: #fff;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        .date-picker {
-            margin-bottom: 15px;
-        }
-        .date-picker label {
-            font-weight: bold;
-            margin-right: 10px;
-        }
-        input[type="date"] {
-            padding: 8px 12px;
-            font-size: 16px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-        }
-        .btn-group {
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-        button {
-            padding: 10px 16px;
-            font-size: 15px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: opacity 0.2s;
-        }
-        button:hover {
-            opacity: 0.85;
-        }
-        .btn-expense { background-color: #e74c3c; color: white; }
-        .btn-income { background-color: #2ecc71; color: white; }
-        .btn-reimburse { background-color: #f39c12; color: white; }
-        .btn-export { background-color: #34495e; color: white; width: 100%; margin-top: 15px; }
-        
-        /* 彈出表單與共用輸入框 */
-        .input-modal {
-            display: none;
-            background: #fff;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
-            border-left: 5px solid #3498db;
-        }
-        .form-group {
-            margin-bottom: 14px;
-            text-align: left;
-        }
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-            font-size: 14px;
-        }
-        .form-group input, .form-group select {
-            width: 100%;
-            padding: 10px;
-            box-sizing: border-box;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            font-size: 15px;
-        }
-        .btn-save { background-color: #3498db; color: white; width: 100%; margin-top: 10px; }
-        .btn-cancel { background-color: #95a5a6; color: white; width: 100%; margin-top: 5px; }
-
-        /* 紀錄列表 */
-        .record-list {
-            list-style: none;
-            padding: 0;
-        }
-        .record-item {
-            background: #fff;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 10px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 1px 5px rgba(0,0,0,0.05);
-        }
-        .record-info {
-            display: flex;
-            flex-direction: column;
-        }
-        .record-title {
-            font-size: 17px;
-            font-weight: bold;
-        }
-        .record-meta {
-            font-size: 13px;
-            color: #7f8c8d;
-            margin-top: 4px;
-        }
-        .badge {
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 12px;
-            color: white;
-            margin-right: 5px;
-        }
-        .bg-expense { background-color: #e74c3c; }
-        .bg-income { background-color: #2ecc71; }
-        .bg-reimburse { background-color: #f39c12; }
-        
-        .status-btn {
-            padding: 4px 8px;
-            font-size: 12px;
-            border-radius: 4px;
-            cursor: pointer;
-            border: 1px solid #ccc;
-            background: #ecf0f1;
-            color: #2c3e50;
-            margin-left: 8px;
-        }
-        .status-received {
-            background-color: #d4edda;
-            color: #155724;
-            border-color: #c3e6cb;
-        }
-        .status-pending {
-            background-color: #f8d7da;
-            color: #721c24;
-            border-color: #f5c6cb;
-        }
-        .record-amount {
-            font-size: 18px;
-            font-weight: bold;
-        }
-        .delete-btn {
-            background: none;
-            color: #bdc3c7;
-            font-size: 18px;
-            padding: 0 5px;
-            margin-left: 10px;
-        }
-        .delete-btn:hover { color: #e74c3c; }
-        .hidden { display: none !important; }
-    </style>
+    /* 儀表板樣式 */
+    .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+    .stat-box { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 14px; text-align: center; }
+    .stat-label { font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+    .stat-val { font-size: 20px; font-weight: 700; }
+    .income-text { color: var(--income); }
+    .expense-text { color: var(--expense); }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--border); }
+    th { color: var(--muted); font-weight: 600; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+    .badge.income { background: #dcfce7; color: var(--income); }
+    .badge.expense { background: #fee2e2; color: var(--expense); }
+    @media (max-width: 540px) {
+      .summary { grid-template-columns: 1fr; }
+      .row { flex-direction: column; }
+    }
+  </style>
 </head>
 <body>
+  <div class="container">
+    <!-- ==================== 登入 / 註冊區塊 ==================== -->
+    <div id="auth-section" class="card">
+      <h2 style="margin-bottom: 6px;">📒 個人專屬記帳系統</h2>
+      <p style="color: var(--muted); font-size: 14px; margin-top: 0;">各帳號資料獨立儲存，新用戶需透過信箱驗證碼註冊</p>
 
-    <!-- 登入 / 註冊畫面 -->
-    <div id="authSection" class="auth-container">
-        <h2 style="margin-top:0;">記帳系統</h2>
-        <div class="auth-tabs">
-            <div class="auth-tab active" id="tabLogin" onclick="switchAuthMode('login')">登入帳號</div>
-            <div class="auth-tab" id="tabRegister" onclick="switchAuthMode('register')">首次註冊 (信箱驗證)</div>
+      <div class="tabs">
+        <button id="tab-login" class="tab-btn active" onclick="switchAuthTab('login')">登入帳號</button>
+        <button id="tab-register" class="tab-btn" onclick="switchAuthTab('register')">信箱驗證註冊</button>
+      </div>
+
+      <!-- 登入表單 -->
+      <form id="login-form" onsubmit="handleLogin(event)">
+        <div class="form-group">
+          <label>電子信箱</label>
+          <input type="email" id="login-email" placeholder="請輸入註冊的電子信箱" required autocomplete="email" />
+        </div>
+        <div class="form-group">
+          <label>登入密碼</label>
+          <input type="password" id="login-password" placeholder="請輸入密碼" required autocomplete="current-password" />
+        </div>
+        <button type="submit" style="width: 100%;">登入記帳本</button>
+        <div id="login-msg" class="msg hidden"></div>
+      </form>
+
+      <!-- 註冊表單 -->
+      <form id="register-form" class="hidden" onsubmit="handleRegister(event)">
+        <div class="form-group">
+          <label>1. 電子信箱（作為您的專屬帳號）</label>
+          <div class="row">
+            <input type="email" id="reg-email" placeholder="請輸入您的電子信箱" required />
+            <button type="button" id="send-code-btn" onclick="sendVerificationCode()" style="flex: 0 0 auto;">寄送驗證碼</button>
+          </div>
+          <div id="code-status" class="msg hidden"></div>
         </div>
 
-        <!-- 模式 A：一般登入 -->
-        <div id="loginForm">
-            <div class="form-group">
-                <label for="loginEmail">電子郵件 (Email)：</label>
-                <input type="email" id="loginEmail" placeholder="請輸入您的電子郵件">
-            </div>
-            <div class="form-group">
-                <label for="loginPassword">密碼：</label>
-                <input type="password" id="loginPassword" placeholder="請輸入密碼">
-            </div>
-            <button class="btn-auth" onclick="handleLogin()">登入系統</button>
+        <div class="form-group">
+          <label>2. 信箱 6 位數驗證碼</label>
+          <input type="text" id="reg-code" placeholder="請輸入信箱收到的 6 位數驗證碼" maxlength="6" required />
         </div>
 
-        <!-- 模式 B 步驟 1：輸入並驗證電子郵件 -->
-        <div id="registerStep1" class="hidden">
-            <div class="step-badge">步驟 1 / 2：驗證電子郵件</div>
-            <div class="form-group">
-                <label for="regEmail">請輸入電子郵件：</label>
-                <input type="email" id="regEmail" placeholder="example@gmail.com">
-            </div>
-            <div id="verifyCodeSection" class="hidden">
-                <div class="verify-box" id="verifyHint"></div>
-                <div class="form-group">
-                    <label for="regVerifyCode">輸入 6 位數驗證碼：</label>
-                    <input type="text" id="regVerifyCode" placeholder="請輸入驗證碼" maxlength="6">
-                </div>
-                <button class="btn-auth" onclick="verifyEmailCode()">驗證信箱並下一步</button>
-            </div>
-            <button class="btn-auth" id="sendCodeBtn" onclick="sendVerifyCode()">取得驗證碼</button>
+        <div class="form-group">
+          <label>3. 設定顯示名稱</label>
+          <input type="text" id="reg-name" placeholder="例如：王小明" required />
         </div>
 
-        <!-- 模式 B 步驟 2：信箱通過後，設定自訂名字與密碼 -->
-        <div id="registerStep2" class="hidden">
-            <div class="step-badge">步驟 2 / 2：設定個人資料</div>
-            <div class="form-group">
-                <label>已驗證信箱：</label>
-                <input type="text" id="verifiedEmailDisplay" disabled style="background:#ecf0f1; color:#555;">
-            </div>
-            <div class="form-group">
-                <label for="regDisplayName">自訂名字（顯示於記帳本）：</label>
-                <input type="text" id="regDisplayName" value="許宏斌" placeholder="例如：許宏斌">
-            </div>
-            <div class="form-group">
-                <label for="regPassword">設定密碼：</label>
-                <input type="password" id="regPassword" value="1204" placeholder="請設定登入密碼">
-            </div>
-            <div class="form-group">
-                <label for="regConfirmPassword">再次確認密碼：</label>
-                <input type="password" id="regConfirmPassword" value="1204" placeholder="請再次輸入密碼">
-            </div>
-            <button class="btn-auth" onclick="completeRegistration()">完成註冊並進入記帳</button>
-            <button class="btn-secondary" onclick="switchAuthMode('register')">返回重新輸入信箱</button>
+        <div class="form-group">
+          <label>4. 設定登入密碼</label>
+          <input type="password" id="reg-password" placeholder="請設定密碼（至少 4 碼）" minlength="4" required />
         </div>
+
+        <button type="submit" style="width: 100%;">完成驗證並註冊</button>
+        <div id="reg-msg" class="msg hidden"></div>
+      </form>
     </div>
 
-    <!-- 主記帳畫面 (登入後顯示) -->
-    <div id="appSection" class="hidden">
-        <!-- 使用者資訊列 -->
-        <div class="user-bar">
-            <div class="user-info-text">
-                <span class="user-display-name">👋 你好，<span id="displayUserName"></span></span>
-                <span class="user-email-sub" id="displayUserEmail"></span>
-            </div>
-            <button class="btn-logout" onclick="logout()">登出</button>
+    <!-- ==================== 記帳主畫面區塊 ==================== -->
+    <div id="app-section" class="hidden">
+      <div class="card">
+        <div class="topbar">
+          <div>
+            <h2 style="margin: 0;" id="welcome-title">你好！</h2>
+            <span style="font-size: 13px; color: var(--muted);" id="current-user-email"></span>
+          </div>
+          <button class="secondary" onclick="handleLogout()">登出</button>
         </div>
 
-        <!-- 1. 最上面寫記帳紀錄 -->
-        <h1>記帳紀錄</h1>
-
-        <!-- 自動統計看板 -->
-        <div class="summary-grid">
-            <div class="summary-card">
-                <div class="label">當日總支出</div>
-                <div class="value val-expense" id="totalExpense">$0</div>
-            </div>
-            <div class="summary-card">
-                <div class="label">當日總收入</div>
-                <div class="value val-income" id="totalIncome">$0</div>
-            </div>
-            <div class="summary-card">
-                <div class="label">累積未收款項</div>
-                <div class="value val-pending" id="totalPending">$0</div>
-            </div>
+        <div class="summary">
+          <div class="stat-box">
+            <div class="stat-label">總收入</div>
+            <div class="stat-val income-text" id="total-income">$0</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">總支出</div>
+            <div class="stat-val expense-text" id="total-expense">$0</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">目前結餘</div>
+            <div class="stat-val" id="total-balance">$0</div>
+          </div>
         </div>
 
-        <!-- 2. 中間有日期可以選 & 新增按鈕 -->
-        <div class="control-panel">
-            <div class="date-picker">
-                <label for="recordDate">選擇日期：</label>
-                <input type="date" id="recordDate">
+        <h3 style="font-size: 16px; margin-bottom: 12px;">新增收支紀錄</h3>
+        <form onsubmit="addRecord(event)">
+          <div class="row form-group">
+            <div>
+              <label>類型</label>
+              <select id="rec-type">
+                <option value="expense">支出</option>
+                <option value="income">收入</option>
+              </select>
             </div>
-            
-            <div class="btn-group">
-                <button class="btn-expense" onclick="openForm('支出')">+ 新增支出</button>
-                <button class="btn-income" onclick="openForm('收入')">+ 新增收入</button>
-                <button class="btn-reimburse" onclick="openForm('報帳')">+ 新增報帳</button>
+            <div>
+              <label>分類</label>
+              <select id="rec-category">
+                <option value="餐飲">餐飲</option>
+                <option value="交通">交通</option>
+                <option value="購物">購物</option>
+                <option value="娛樂">娛樂</option>
+                <option value="居住/帳單">居住/帳單</option>
+                <option value="薪資/獎金">薪資/獎金</option>
+                <option value="其他">其他</option>
+              </select>
             </div>
+            <div>
+              <label>日期</label>
+              <input type="date" id="rec-date" required />
+            </div>
+          </div>
+          <div class="row form-group">
+            <div>
+              <label>金額</label>
+              <input type="number" id="rec-amount" placeholder="請輸入金額" min="1" step="1" required />
+            </div>
+            <div>
+              <label>備註說明</label>
+              <input type="text" id="rec-note" placeholder="例如：午餐便當、捷運儲值" />
+            </div>
+          </div>
+          <button type="submit" style="width: 100%;">儲存紀錄</button>
+        </form>
+      </div>
 
-            <button class="btn-export" onclick="exportToCSV()">📥 一鍵匯出全部紀錄 (Excel / CSV)</button>
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <h3 style="margin: 0; font-size: 16px;">歷史收支明細</h3>
+          <button class="secondary" style="font-size: 13px; padding: 6px 12px;" onclick="exportCSV()">匯出 CSV</button>
         </div>
-
-        <!-- 詢問品項、價錢與狀態的輸入區 -->
-        <div class="input-modal" id="inputModal">
-            <h3 id="modalTitle" style="margin-top:0;">新增項目</h3>
-            <div class="form-group">
-                <label for="itemName">品項名稱：</label>
-                <input type="text" id="itemName" placeholder="例如：午餐、車資、客戶請款...">
-            </div>
-            <div class="form-group">
-                <label for="itemPrice">價錢 (元)：</label>
-                <input type="number" id="itemPrice" placeholder="請輸入金額">
-            </div>
-            <div class="form-group" id="statusGroup">
-                <label for="paymentStatus">款項狀態：</label>
-                <select id="paymentStatus">
-                    <option value="未拿到">還未拿到錢</option>
-                    <option value="已拿到">已拿到錢</option>
-                </select>
-            </div>
-            <button class="btn-save" onclick="saveRecord()">儲存紀錄</button>
-            <button class="btn-cancel" onclick="closeForm()">取消</button>
+        <div style="overflow-x: auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>日期</th>
+                <th>類型</th>
+                <th>分類</th>
+                <th>備註</th>
+                <th>金額</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="record-list"></tbody>
+          </table>
         </div>
-
-        <!-- 紀錄顯示區 -->
-        <ul class="record-list" id="recordList"></ul>
+      </div>
     </div>
+  </div>
 
-    <script>
-        let currentUserEmail = localStorage.getItem('acc_currentUserEmail') || null;
-        let generatedCode = '';
-        let pendingEmail = '';
-        let currentType = '支出';
-        let records = [];
+  <script>
+    // ==================== EmailJS 真實金鑰設定 ====================
+    const EMAILJS_PUBLIC_KEY  = "w944FFd1_403jmOVb";
+    const EMAILJS_SERVICE_ID  = "service_idwnyff";
+    const EMAILJS_TEMPLATE_ID = "template_pe4q7sr";
 
-        const dateInput = document.getElementById('recordDate');
-        dateInput.valueAsDate = new Date();
-        dateInput.addEventListener('change', renderRecords);
+    emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
 
-        // 取得所有使用者資料 { "email": { name: "許宏斌", password: "1204" } }
-        function getUsers() {
-            return JSON.parse(localStorage.getItem('acc_users_v2')) || {};
+    // ==================== 狀態與儲存鍵值 ====================
+    const USERS_KEY = "bookkeeping_users_v1";
+    const SESSION_KEY = "bookkeeping_current_user_v1";
+    let pendingVerification = { email: "", code: "", expiresAt: 0 };
+    let countdownTimer = null;
+
+    // 初始化日期與登入狀態
+    document.addEventListener("DOMContentLoaded", () => {
+      document.getElementById("rec-date").value = new Date().toISOString().split("T")[0];
+      const savedEmail = localStorage.getItem(SESSION_KEY);
+      if (savedEmail) {
+        const users = getUsers();
+        if (users[savedEmail]) {
+          enterApp(users[savedEmail]);
         }
+      }
+    });
 
-        function saveUsers(users) {
-            localStorage.setItem('acc_users_v2', JSON.stringify(users));
+    function getUsers() {
+      try {
+        return JSON.parse(localStorage.getItem(USERS_KEY)) || {};
+      } catch {
+        return {};
+      }
+    }
+
+    function saveUsers(users) {
+      localStorage.setItem(USERS_KEY, JSON.stringify(users));
+    }
+
+    function showMsg(elId, text, type = "info") {
+      const el = document.getElementById(elId);
+      el.textContent = text;
+      el.className = `msg ${type}`;
+      el.classList.remove("hidden");
+    }
+
+    function switchAuthTab(tab) {
+      const isLogin = tab === "login";
+      document.getElementById("tab-login").classList.toggle("active", isLogin);
+      document.getElementById("tab-register").classList.toggle("active", !isLogin);
+      document.getElementById("login-form").classList.toggle("hidden", !isLogin);
+      document.getElementById("register-form").classList.toggle("hidden", isLogin);
+      document.getElementById("login-msg").classList.add("hidden");
+      document.getElementById("reg-msg").classList.add("hidden");
+    }
+
+    // ==================== 寄送真實 6 位數驗證碼 ====================
+    async function sendVerificationCode() {
+      const email = document.getElementById("reg-email").value.trim().toLowerCase();
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        showMsg("code-status", "請先輸入有效的電子信箱格式。", "error");
+        return;
+      }
+
+      const users = getUsers();
+      if (users[email]) {
+        showMsg("code-status", "此信箱已註冊過帳號，請直接切換至「登入帳號」。", "error");
+        return;
+      }
+
+      const btn = document.getElementById("send-code-btn");
+      btn.disabled = true;
+      showMsg("code-status", "正在發送驗證碼至您的信箱，請稍候...", "info");
+
+      const code = String(Math.floor(100000 + Math.random() * 900000));
+      pendingVerification = {
+        email,
+        code,
+        expiresAt: Date.now() + 5 * 60 * 1000 // 5 分鐘有效
+      };
+
+      try {
+        await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+          to_email: email,
+          passcode: code
+        });
+
+        showMsg("code-status", `驗證碼已寄出至 ${email}（5 分鐘內有效，若未看到請檢查垃圾信件匣）。`, "success");
+        startCooldown(60);
+      } catch (err) {
+        console.error("EmailJS 發送失敗:", err);
+        btn.disabled = false;
+        showMsg("code-status", "驗證信發送失敗，請確認網路連線或稍後再試。", "error");
+      }
+    }
+
+    function startCooldown(seconds) {
+      const btn = document.getElementById("send-code-btn");
+      let left = seconds;
+      btn.disabled = true;
+      btn.textContent = `重新寄送 (${left}s)`;
+      clearInterval(countdownTimer);
+      countdownTimer = setInterval(() => {
+        left--;
+        if (left <= 0) {
+          clearInterval(countdownTimer);
+          btn.disabled = false;
+          btn.textContent = "寄送驗證碼";
+        } else {
+          btn.textContent = `重新寄送 (${left}s)`;
         }
+      }, 1000);
+    }
 
-        // 初始化畫面
-        function initApp() {
-            const users = getUsers();
-            if (currentUserEmail && users[currentUserEmail]) {
-                document.getElementById('authSection').classList.add('hidden');
-                document.getElementById('appSection').classList.remove('hidden');
-                document.getElementById('displayUserName').innerText = users[currentUserEmail].name;
-                document.getElementById('displayUserEmail').innerText = currentUserEmail;
-                records = JSON.parse(localStorage.getItem(`acc_records_${currentUserEmail}`)) || [];
-                renderRecords();
-            } else {
-                currentUserEmail = null;
-                localStorage.removeItem('acc_currentUserEmail');
-                document.getElementById('authSection').classList.remove('hidden');
-                document.getElementById('appSection').classList.add('hidden');
-            }
-        }
+    // ==================== 註冊與登入處理 ====================
+    function handleRegister(e) {
+      e.preventDefault();
+      const email = document.getElementById("reg-email").value.trim().toLowerCase();
+      const code = document.getElementById("reg-code").value.trim();
+      const name = document.getElementById("reg-name").value.trim();
+      const password = document.getElementById("reg-password").value;
 
-        // 切換「登入」與「首次註冊」分頁
-        function switchAuthMode(mode) {
-            document.getElementById('loginForm').classList.add('hidden');
-            document.getElementById('registerStep1').classList.add('hidden');
-            document.getElementById('registerStep2').classList.add('hidden');
+      if (!pendingVerification.code || pendingVerification.email !== email) {
+        showMsg("reg-msg", "請先點擊「寄送驗證碼」取得此信箱的驗證碼。", "error");
+        return;
+      }
+      if (Date.now() > pendingVerification.expiresAt) {
+        showMsg("reg-msg", "驗證碼已過期，請重新寄送驗證碼。", "error");
+        return;
+      }
+      if (code !== pendingVerification.code) {
+        showMsg("reg-msg", "驗證碼輸入錯誤，請重新確認信件中的 6 位數字。", "error");
+        return;
+      }
 
-            if (mode === 'login') {
-                document.getElementById('tabLogin').classList.add('active');
-                document.getElementById('tabRegister').classList.remove('active');
-                document.getElementById('loginForm').classList.remove('hidden');
-            } else {
-                document.getElementById('tabRegister').classList.add('active');
-                document.getElementById('tabLogin').classList.remove('active');
-                document.getElementById('registerStep1').classList.remove('hidden');
-                // 重置步驟 1 狀態
-                document.getElementById('regEmail').disabled = false;
-                document.getElementById('regEmail').value = '';
-                document.getElementById('regVerifyCode').value = '';
-                document.getElementById('verifyCodeSection').classList.add('hidden');
-                document.getElementById('sendCodeBtn').classList.remove('hidden');
-            }
-        }
+      const users = getUsers();
+      if (users[email]) {
+        showMsg("reg-msg", "此信箱已註冊過帳號。", "error");
+        return;
+      }
 
-        // 步驟 1：檢查電子郵件並產生驗證碼
-        function sendVerifyCode() {
-            const email = document.getElementById('regEmail').value.trim().toLowerCase();
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      users[email] = { email, name, password };
+      saveUsers(users);
+      pendingVerification = { email: "", code: "", expiresAt: 0 };
 
-            if (!emailRegex.test(email)) {
-                alert('請輸入正確的電子郵件格式（例如：larry103@smail.ilc.edu.tw）！');
-                return;
-            }
+      localStorage.setItem(SESSION_KEY, email);
+      enterApp(users[email]);
+    }
 
-            const users = getUsers();
-            if (users[email]) {
-                alert('這個電子郵件已經註冊過了，請直接點「登入帳號」！');
-                return;
-            }
+    function handleLogin(e) {
+      e.preventDefault();
+      const email = document.getElementById("login-email").value.trim().toLowerCase();
+      const password = document.getElementById("login-password").value;
+      const users = getUsers();
 
-            pendingEmail = email;
-            generatedCode = Math.floor(100000 + Math.random() * 900000).toString();
+      if (!users[email] || users[email].password !== password) {
+        showMsg("login-msg", "電子信箱或密碼錯誤，若尚未註冊請先完成信箱驗證註冊。", "error");
+        return;
+      }
 
-            document.getElementById('regEmail').disabled = true;
-            document.getElementById('sendCodeBtn').classList.add('hidden');
-            document.getElementById('verifyCodeSection').classList.remove('hidden');
-            document.getElementById('verifyHint').innerHTML = `已模擬發送驗證信至 <b>${email}</b><br>您的驗證碼為：<b style="font-size:18px; color:#d35400;">${generatedCode}</b>`;
-        }
+      localStorage.setItem(SESSION_KEY, email);
+      enterApp(users[email]);
+    }
 
-        // 驗證信箱驗證碼
-        function verifyEmailCode() {
-            const inputCode = document.getElementById('regVerifyCode').value.trim();
-            if (inputCode !== generatedCode) {
-                alert('驗證碼輸入錯誤，請再確認一次！');
-                return;
-            }
+    function handleLogout() {
+      localStorage.removeItem(SESSION_KEY);
+      document.getElementById("app-section").classList.add("hidden");
+      document.getElementById("auth-section").classList.remove("hidden");
+      document.getElementById("login-password").value = "";
+    }
 
-            // 通過信箱驗證，進入步驟 2 設定自訂名字與密碼
-            document.getElementById('registerStep1').classList.add('hidden');
-            document.getElementById('registerStep2').classList.remove('hidden');
-            document.getElementById('verifiedEmailDisplay').value = pendingEmail;
-        }
+    // ==================== 個人獨立記帳資料邏輯 ====================
+    function getRecordKey(email) {
+      return `bookkeeping_records_${email}`;
+    }
 
-        // 步驟 2：完成設定自訂名字與密碼
-        function completeRegistration() {
-            const name = document.getElementById('regDisplayName').value.trim();
-            const password = document.getElementById('regPassword').value;
-            const confirmPassword = document.getElementById('regConfirmPassword').value;
+    function getCurrentUser() {
+      const email = localStorage.getItem(SESSION_KEY);
+      return email ? getUsers()[email] : null;
+    }
 
-            if (!name) {
-                alert('請輸入您的自訂名字！');
-                return;
-            }
-            if (password.length < 4) {
-                alert('密碼請至少設定 4 個字元！');
-                return;
-            }
-            if (password !== confirmPassword) {
-                alert('兩次輸入的密碼不一致，請重新確認！');
-                return;
-            }
+    function enterApp(user) {
+      document.getElementById("auth-section").classList.add("hidden");
+      document.getElementById("app-section").classList.remove("hidden");
+      document.getElementById("welcome-title").textContent = `你好，${user.name}！`;
+      document.getElementById("current-user-email").textContent = `專屬帳號：${user.email}`;
+      renderRecords();
+    }
 
-            const users = getUsers();
-            users[pendingEmail] = {
-                name: name,
-                password: password
-            };
-            saveUsers(users);
+    function getRecords() {
+      const user = getCurrentUser();
+      if (!user) return [];
+      try {
+        return JSON.parse(localStorage.getItem(getRecordKey(user.email))) || [];
+      } catch {
+        return [];
+      }
+    }
 
-            alert(`歡迎 ${name}！帳號註冊完成。`);
-            currentUserEmail = pendingEmail;
-            localStorage.setItem('acc_currentUserEmail', currentUserEmail);
-            initApp();
-        }
+    function saveRecords(records) {
+      const user = getCurrentUser();
+      if (!user) return;
+      localStorage.setItem(getRecordKey(user.email), JSON.stringify(records));
+    }
 
-        // 一般登入
-        function handleLogin() {
-            const email = document.getElementById('loginEmail').value.trim().toLowerCase();
-            const password = document.getElementById('loginPassword').value;
+    function addRecord(e) {
+      e.preventDefault();
+      const type = document.getElementById("rec-type").value;
+      const category = document.getElementById("rec-category").value;
+      const date = document.getElementById("rec-date").value;
+      const amount = Number(document.getElementById("rec-amount").value);
+      const note = document.getElementById("rec-note").value.trim() || "-";
 
-            const users = getUsers();
-            if (!users[email]) {
-                alert('找不到此電子郵件，請先點選上方的「首次註冊 (信箱驗證)」！');
-                return;
-            }
-            if (users[email].password !== password) {
-                alert('密碼錯誤，請重新輸入！');
-                return;
-            }
+      const records = getRecords();
+      records.unshift({
+        id: Date.now(),
+        type,
+        category,
+        date,
+        amount,
+        note
+      });
+      saveRecords(records);
 
-            currentUserEmail = email;
-            localStorage.setItem('acc_currentUserEmail', currentUserEmail);
-            initApp();
-        }
+      document.getElementById("rec-amount").value = "";
+      document.getElementById("rec-note").value = "";
+      renderRecords();
+    }
 
-        // 登出
-        function logout() {
-            if (confirm('確定要登出目前帳號嗎？')) {
-                currentUserEmail = null;
-                localStorage.removeItem('acc_currentUserEmail');
-                document.getElementById('loginPassword').value = '';
-                switchAuthMode('login');
-                initApp();
-            }
-        }
+    function deleteRecord(id) {
+      const records = getRecords().filter(r => r.id !== id);
+      saveRecords(records);
+      renderRecords();
+    }
 
-        function saveUserRecords() {
-            if (currentUserEmail) {
-                localStorage.setItem(`acc_records_${currentUserEmail}`, JSON.stringify(records));
-            }
-        }
+    function renderRecords() {
+      const records = getRecords();
+      let income = 0;
+      let expense = 0;
 
-        function openForm(type) {
-            currentType = type;
-            document.getElementById('modalTitle').innerText = `新增【${type}】`;
-            document.getElementById('itemName').value = '';
-            document.getElementById('itemPrice').value = '';
-            
-            const statusGroup = document.getElementById('statusGroup');
-            if (type === '支出') {
-                statusGroup.style.display = 'none';
-            } else {
-                statusGroup.style.display = 'block';
-                document.getElementById('paymentStatus').value = (type === '收入') ? '已拿到' : '未拿到';
-            }
-            
-            document.getElementById('inputModal').style.display = 'block';
-            document.getElementById('itemName').focus();
-        }
+      const tbody = document.getElementById("record-list");
+      tbody.innerHTML = "";
 
-        function closeForm() {
-            document.getElementById('inputModal').style.display = 'none';
-        }
+      if (records.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--muted); padding:24px;">目前尚無記帳紀錄，快新增第一筆收支吧！</td></tr>`;
+      } else {
+        records.forEach(r => {
+          if (r.type === "income") income += r.amount;
+          else expense += r.amount;
 
-        function saveRecord() {
-            const date = dateInput.value;
-            const name = document.getElementById('itemName').value.trim();
-            const price = parseFloat(document.getElementById('itemPrice').value);
-            const status = (currentType === '支出') ? '不適用' : document.getElementById('paymentStatus').value;
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${r.date}</td>
+            <td><span class="badge ${r.type}">${r.type === "income" ? "收入" : "支出"}</span></td>
+            <td>${r.category}</td>
+            <td>${escapeHTML(r.note)}</td>
+            <td class="${r.type === "income" ? "income-text" : "expense-text"}" style="font-weight:600;">
+              ${r.type === "income" ? "+" : "-"}$${r.amount.toLocaleString()}
+            </td>
+            <td><button class="danger" onclick="deleteRecord(${r.id})">刪除</button></td>
+          `;
+          tbody.appendChild(tr);
+        });
+      }
 
-            if (!date || !name || isNaN(price) || price <= 0) {
-                alert('請完整填寫日期、品項與正確的價錢！');
-                return;
-            }
+      document.getElementById("total-income").textContent = `$${income.toLocaleString()}`;
+      document.getElementById("total-expense").textContent = `$${expense.toLocaleString()}`;
+      const bal = income - expense;
+      const balEl = document.getElementById("total-balance");
+      balEl.textContent = `${bal < 0 ? "-" : ""}$${Math.abs(bal).toLocaleString()}`;
+      balEl.className = `stat-val ${bal >= 0 ? "income-text" : "expense-text"}`;
+    }
 
-            const newRecord = {
-                id: Date.now(),
-                date: date,
-                type: currentType,
-                name: name,
-                price: price,
-                status: status
-            };
+    function exportCSV() {
+      const user = getCurrentUser();
+      const records = getRecords();
+      if (!user || records.length === 0) {
+        alert("目前沒有可匯出的紀錄。");
+        return;
+      }
+      const rows = [["日期", "類型", "分類", "備註", "金額"]];
+      records.forEach(r => {
+        rows.push([
+          r.date,
+          r.type === "income" ? "收入" : "支出",
+          r.category,
+          `"${r.note.replace(/"/g, '""')}"`,
+          r.type === "income" ? r.amount : -r.amount
+        ]);
+      });
+      const csvContent = "\uFEFF" + rows.map(e => e.join(",")).join("\n");
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `記帳明細_${user.name}_${new Date().toISOString().split("T")[0]}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
 
-            records.push(newRecord);
-            saveUserRecords();
-            closeForm();
-            renderRecords();
-        }
-
-        function toggleStatus(id) {
-            const record = records.find(r => r.id === id);
-            if (record && record.status !== '不適用') {
-                record.status = (record.status === '已拿到') ? '未拿到' : '已拿到';
-                saveUserRecords();
-                renderRecords();
-            }
-        }
-
-        function deleteRecord(id) {
-            if (confirm('確定要刪除這筆紀錄嗎？')) {
-                records = records.filter(r => r.id !== id);
-                saveUserRecords();
-                renderRecords();
-            }
-        }
-
-        function updateSummary(selectedDate) {
-            let dayExpense = 0;
-            let dayIncome = 0;
-            let allPending = 0;
-
-            records.forEach(r => {
-                if (r.date === selectedDate) {
-                    if (r.type === '支出') dayExpense += r.price;
-                    if (r.type === '收入') dayIncome += r.price;
-                }
-                if (r.status === '未拿到') {
-                    allPending += r.price;
-                }
-            });
-
-            document.getElementById('totalExpense').innerText = `$${dayExpense.toLocaleString()}`;
-            document.getElementById('totalIncome').innerText = `$${dayIncome.toLocaleString()}`;
-            document.getElementById('totalPending').innerText = `$${allPending.toLocaleString()}`;
-        }
-
-        function renderRecords() {
-            const list = document.getElementById('recordList');
-            const selectedDate = dateInput.value;
-            list.innerHTML = '';
-
-            updateSummary(selectedDate);
-
-            const filteredRecords = records.filter(r => r.date === selectedDate);
-
-            if (filteredRecords.length === 0) {
-                list.innerHTML = '<p style="text-align:center; color:#999;">這天還沒有任何記帳紀錄喔！</p>';
-                return;
-            }
-
-            filteredRecords.forEach(r => {
-                let badgeClass = 'bg-expense';
-                let sign = '-';
-                if (r.type === '收入') { badgeClass = 'bg-income'; sign = '+'; }
-                if (r.type === '報帳') { badgeClass = 'bg-reimburse'; sign = ''; }
-
-                let statusHtml = '';
-                if (r.status !== '不適用') {
-                    const statusClass = (r.status === '已拿到') ? 'status-received' : 'status-pending';
-                    statusHtml = `<button class="status-btn ${statusClass}" onclick="toggleStatus(${r.id})" title="點擊切換狀態">${r.status}</button>`;
-                }
-
-                const li = document.createElement('li');
-                li.className = 'record-item';
-                li.innerHTML = `
-                    <div class="record-info">
-                        <div>
-                            <span class="badge ${badgeClass}">${r.type}</span>
-                            <span class="record-title">${r.name}</span>
-                            ${statusHtml}
-                        </div>
-                        <div class="record-meta">${r.date}</div>
-                    </div>
-                    <div>
-                        <span class="record-amount">${sign}$${r.price.toLocaleString()}</span>
-                        <button class="delete-btn" onclick="deleteRecord(${r.id})" title="刪除">×</button>
-                    </div>
-                `;
-                list.appendChild(li);
-            });
-        }
-
-        function exportToCSV() {
-            if (records.length === 0) {
-                alert('目前沒有任何紀錄可以匯出喔！');
-                return;
-            }
-
-            const users = getUsers();
-            const userName = users[currentUserEmail]?.name || currentUserEmail;
-            const sortedRecords = [...records].sort((a, b) => a.date.localeCompare(b.date));
-            let csvContent = "日期,類型,品項名稱,金額,款項狀態\n";
-
-            sortedRecords.forEach(r => {
-                const safeName = `"${r.name.replace(/"/g, '""')}"`;
-                csvContent += `${r.date},${r.type},${safeName},${r.price},${r.status}\n`;
-            });
-
-            const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            
-            const link = document.createElement("a");
-            const today = new Date().toISOString().slice(0, 10);
-            link.setAttribute("href", url);
-            link.setAttribute("download", `記帳報表_${userName}_${today}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-        }
-
-        // 啟動程式
-        initApp();
-    </script>
+    function escapeHTML(str) {
+      return str.replace(/[&<>"']/g, m => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      }[m]));
+    }
+  </script>
 </body>
 </html>
