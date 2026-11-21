@@ -20,7 +20,7 @@
     }
     * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", sans-serif; }
     body { margin: 0; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 24px 16px; }
-    .container { width: 100%; max-width: 720px; }
+    .container { width: 100%; max-width: 720px; flex: 1; }
     .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 24px; box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04); margin-bottom: 20px; }
     h1, h2, h3 { margin-top: 0; }
     .hidden { display: none !important; }
@@ -46,7 +46,8 @@
     .msg.success { background: #f0fdf4; color: #15803d; }
 
     /* 儀表板樣式 */
-    .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 12px; }
+    .sync-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: #15803d; background: #dcfce7; padding: 2px 8px; border-radius: 999px; font-weight: 600; margin-left: 8px; vertical-align: middle; }
     .summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
     .stat-box { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 14px; text-align: center; }
     .stat-label { font-size: 13px; color: var(--muted); margin-bottom: 4px; }
@@ -59,6 +60,7 @@
     .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; }
     .badge.income { background: #dcfce7; color: var(--income); }
     .badge.expense { background: #fee2e2; color: var(--expense); }
+    footer { width: 100%; max-width: 720px; text-align: center; font-size: 13px; color: var(--muted); padding: 12px 0 4px; }
     @media (max-width: 540px) {
       .summary { grid-template-columns: 1fr; }
       .row { flex-direction: column; }
@@ -70,7 +72,7 @@
     <!-- ==================== 登入 / 註冊區塊 ==================== -->
     <div id="auth-section" class="card">
       <h2 style="margin-bottom: 6px;">📒 個人專屬記帳系統</h2>
-      <p style="color: var(--muted); font-size: 14px; margin-top: 0;">各帳號資料獨立儲存，新用戶需透過信箱驗證碼註冊</p>
+      <p style="color: var(--muted); font-size: 14px; margin-top: 0;">雲端即時同步，各帳號資料獨立儲存，新用戶需透過信箱驗證碼註冊</p>
 
       <div class="tabs">
         <button id="tab-login" class="tab-btn active" onclick="switchAuthTab('login')">登入帳號</button>
@@ -87,7 +89,7 @@
           <label>登入密碼</label>
           <input type="password" id="login-password" placeholder="請輸入密碼" required autocomplete="current-password" />
         </div>
-        <button type="submit" style="width: 100%;">登入記帳本</button>
+        <button type="submit" id="login-submit-btn" style="width: 100%;">登入記帳本</button>
         <div id="login-msg" class="msg hidden"></div>
       </form>
 
@@ -117,7 +119,7 @@
           <input type="password" id="reg-password" placeholder="請設定密碼（至少 4 碼）" minlength="4" required />
         </div>
 
-        <button type="submit" style="width: 100%;">完成驗證並註冊</button>
+        <button type="submit" id="reg-submit-btn" style="width: 100%;">完成驗證並註冊</button>
         <div id="reg-msg" class="msg hidden"></div>
       </form>
     </div>
@@ -127,7 +129,10 @@
       <div class="card">
         <div class="topbar">
           <div>
-            <h2 style="margin: 0;" id="welcome-title">你好！</h2>
+            <h2 style="margin: 0;">
+              <span id="welcome-title">你好！</span>
+              <span class="sync-badge">☁️ 雲端同步中</span>
+            </h2>
             <span style="font-size: 13px; color: var(--muted);" id="current-user-email"></span>
           </div>
           <button class="secondary" onclick="handleLogout()">登出</button>
@@ -185,7 +190,7 @@
               <input type="text" id="rec-note" placeholder="例如：午餐便當、捷運儲值" />
             </div>
           </div>
-          <button type="submit" style="width: 100%;">儲存紀錄</button>
+          <button type="submit" id="add-record-btn" style="width: 100%;">儲存紀錄</button>
         </form>
       </div>
 
@@ -213,7 +218,37 @@
     </div>
   </div>
 
-  <script>
+  <footer>© 2026 Larry. All rights reserved.</footer>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
+    import {
+      getFirestore,
+      doc,
+      getDoc,
+      setDoc,
+      addDoc,
+      deleteDoc,
+      collection,
+      query,
+      where,
+      onSnapshot
+    } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
+
+    // ==================== Firebase 雲端資料庫設定 ====================
+    const firebaseConfig = {
+      apiKey: "AIzaSyB3XdSLsZOVA2UBWmwtcgiAwgWmIYVuuXM",
+      authDomain: "personal-bookkeeping-9c4c7.firebaseapp.com",
+      projectId: "personal-bookkeeping-9c4c7",
+      storageBucket: "personal-bookkeeping-9c4c7.firebasestorage.app",
+      messagingSenderId: "36395046784",
+      appId: "1:36395046784:web:03203ecadb9d3cf3311365",
+      measurementId: "G-9DKW9FFTMQ"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
     // ==================== EmailJS 真實金鑰設定 ====================
     const EMAILJS_PUBLIC_KEY  = "w944FFd1_403jmOVb";
     const EMAILJS_SERVICE_ID  = "service_idwnyff";
@@ -221,35 +256,31 @@
 
     emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
 
-    // ==================== 狀態與儲存鍵值 ====================
-    const USERS_KEY = "bookkeeping_users_v1";
+    // ==================== 狀態管理 ====================
     const SESSION_KEY = "bookkeeping_current_user_v1";
+    let currentUser = null;
+    let currentRecords = [];
+    let unsubscribeRecords = null;
     let pendingVerification = { email: "", code: "", expiresAt: 0 };
     let countdownTimer = null;
 
-    // 初始化日期與登入狀態
-    document.addEventListener("DOMContentLoaded", () => {
+    // 初始化日期與自動恢復登入狀態
+    document.addEventListener("DOMContentLoaded", async () => {
       document.getElementById("rec-date").value = new Date().toISOString().split("T")[0];
       const savedEmail = localStorage.getItem(SESSION_KEY);
       if (savedEmail) {
-        const users = getUsers();
-        if (users[savedEmail]) {
-          enterApp(users[savedEmail]);
+        try {
+          const userSnap = await getDoc(doc(db, "users", savedEmail));
+          if (userSnap.exists()) {
+            await enterApp(userSnap.data());
+          } else {
+            localStorage.removeItem(SESSION_KEY);
+          }
+        } catch (err) {
+          console.error("自動登入檢查失敗:", err);
         }
       }
     });
-
-    function getUsers() {
-      try {
-        return JSON.parse(localStorage.getItem(USERS_KEY)) || {};
-      } catch {
-        return {};
-      }
-    }
-
-    function saveUsers(users) {
-      localStorage.setItem(USERS_KEY, JSON.stringify(users));
-    }
 
     function showMsg(elId, text, type = "info") {
       const el = document.getElementById(elId);
@@ -258,7 +289,7 @@
       el.classList.remove("hidden");
     }
 
-    function switchAuthTab(tab) {
+    window.switchAuthTab = function(tab) {
       const isLogin = tab === "login";
       document.getElementById("tab-login").classList.toggle("active", isLogin);
       document.getElementById("tab-register").classList.toggle("active", !isLogin);
@@ -266,34 +297,35 @@
       document.getElementById("register-form").classList.toggle("hidden", isLogin);
       document.getElementById("login-msg").classList.add("hidden");
       document.getElementById("reg-msg").classList.add("hidden");
-    }
+    };
 
     // ==================== 寄送真實 6 位數驗證碼 ====================
-    async function sendVerificationCode() {
+    window.sendVerificationCode = async function() {
       const email = document.getElementById("reg-email").value.trim().toLowerCase();
       if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
         showMsg("code-status", "請先輸入有效的電子信箱格式。", "error");
         return;
       }
 
-      const users = getUsers();
-      if (users[email]) {
-        showMsg("code-status", "此信箱已註冊過帳號，請直接切換至「登入帳號」。", "error");
-        return;
-      }
-
       const btn = document.getElementById("send-code-btn");
       btn.disabled = true;
-      showMsg("code-status", "正在發送驗證碼至您的信箱，請稍候...", "info");
-
-      const code = String(Math.floor(100000 + Math.random() * 900000));
-      pendingVerification = {
-        email,
-        code,
-        expiresAt: Date.now() + 5 * 60 * 1000 // 5 分鐘有效
-      };
+      showMsg("code-status", "正在檢查信箱並發送驗證碼，請稍候...", "info");
 
       try {
+        const userSnap = await getDoc(doc(db, "users", email));
+        if (userSnap.exists()) {
+          btn.disabled = false;
+          showMsg("code-status", "此信箱已註冊過帳號，請直接切換至「登入帳號」。", "error");
+          return;
+        }
+
+        const code = String(Math.floor(100000 + Math.random() * 900000));
+        pendingVerification = {
+          email,
+          code,
+          expiresAt: Date.now() + 5 * 60 * 1000
+        };
+
         await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
           to_email: email,
           passcode: code
@@ -302,11 +334,11 @@
         showMsg("code-status", `驗證碼已寄出至 ${email}（5 分鐘內有效，若未看到請檢查垃圾信件匣）。`, "success");
         startCooldown(60);
       } catch (err) {
-        console.error("EmailJS 發送失敗:", err);
+        console.error("寄送驗證碼失敗:", err);
         btn.disabled = false;
         showMsg("code-status", "驗證信發送失敗，請確認網路連線或稍後再試。", "error");
       }
-    }
+    };
 
     function startCooldown(seconds) {
       const btn = document.getElementById("send-code-btn");
@@ -326,8 +358,8 @@
       }, 1000);
     }
 
-    // ==================== 註冊與登入處理 ====================
-    function handleRegister(e) {
+    // ==================== 雲端註冊與登入處理 ====================
+    window.handleRegister = async function(e) {
       e.preventDefault();
       const email = document.getElementById("reg-email").value.trim().toLowerCase();
       const code = document.getElementById("reg-code").value.trim();
@@ -347,131 +379,206 @@
         return;
       }
 
-      const users = getUsers();
-      if (users[email]) {
-        showMsg("reg-msg", "此信箱已註冊過帳號。", "error");
-        return;
+      const submitBtn = document.getElementById("reg-submit-btn");
+      submitBtn.disabled = true;
+      showMsg("reg-msg", "正在建立雲端帳號...", "info");
+
+      try {
+        const userRef = doc(db, "users", email);
+        const existing = await getDoc(userRef);
+        if (existing.exists()) {
+          submitBtn.disabled = false;
+          showMsg("reg-msg", "此信箱已註冊過帳號。", "error");
+          return;
+        }
+
+        const userData = { email, name, password, createdAt: Date.now() };
+        await setDoc(userRef, userData);
+
+        pendingVerification = { email: "", code: "", expiresAt: 0 };
+        localStorage.setItem(SESSION_KEY, email);
+        await enterApp(userData);
+      } catch (err) {
+        console.error("雲端註冊失敗:", err);
+        showMsg("reg-msg", "雲端註冊失敗，請檢查網路連線後再試。", "error");
+      } finally {
+        submitBtn.disabled = false;
       }
+    };
 
-      users[email] = { email, name, password };
-      saveUsers(users);
-      pendingVerification = { email: "", code: "", expiresAt: 0 };
-
-      localStorage.setItem(SESSION_KEY, email);
-      enterApp(users[email]);
-    }
-
-    function handleLogin(e) {
+    window.handleLogin = async function(e) {
       e.preventDefault();
       const email = document.getElementById("login-email").value.trim().toLowerCase();
       const password = document.getElementById("login-password").value;
-      const users = getUsers();
+      const submitBtn = document.getElementById("login-submit-btn");
 
-      if (!users[email] || users[email].password !== password) {
-        showMsg("login-msg", "電子信箱或密碼錯誤，若尚未註冊請先完成信箱驗證註冊。", "error");
-        return;
+      submitBtn.disabled = true;
+      showMsg("login-msg", "正在連線雲端驗證帳號...", "info");
+
+      try {
+        const userSnap = await getDoc(doc(db, "users", email));
+        if (!userSnap.exists() || userSnap.data().password !== password) {
+          showMsg("login-msg", "電子信箱或密碼錯誤，若尚未註冊請先完成信箱驗證註冊。", "error");
+          return;
+        }
+
+        const userData = userSnap.data();
+        localStorage.setItem(SESSION_KEY, email);
+        document.getElementById("login-msg").classList.add("hidden");
+        await enterApp(userData);
+      } catch (err) {
+        console.error("雲端登入失敗:", err);
+        showMsg("login-msg", "雲端連線失敗，請確認網路狀態後再試。", "error");
+      } finally {
+        submitBtn.disabled = false;
       }
+    };
 
-      localStorage.setItem(SESSION_KEY, email);
-      enterApp(users[email]);
-    }
-
-    function handleLogout() {
+    window.handleLogout = function() {
+      if (unsubscribeRecords) {
+        unsubscribeRecords();
+        unsubscribeRecords = null;
+      }
+      currentUser = null;
+      currentRecords = [];
       localStorage.removeItem(SESSION_KEY);
       document.getElementById("app-section").classList.add("hidden");
       document.getElementById("auth-section").classList.remove("hidden");
       document.getElementById("login-password").value = "";
+    };
+
+    // ==================== 雲端即時同步記帳邏輯 ====================
+    async function migrateLocalRecordsIfNeeded(email) {
+      const legacyKey = `bookkeeping_records_${email}`;
+      const raw = localStorage.getItem(legacyKey);
+      if (!raw) return;
+      try {
+        const legacyRecords = JSON.parse(raw);
+        if (Array.isArray(legacyRecords) && legacyRecords.length > 0) {
+          for (const r of legacyRecords) {
+            await addDoc(collection(db, "records"), {
+              email,
+              type: r.type,
+              category: r.category,
+              date: r.date,
+              amount: Number(r.amount),
+              note: r.note || "-",
+              createdAt: r.id || Date.now()
+            });
+          }
+        }
+        localStorage.removeItem(legacyKey);
+      } catch (err) {
+        console.error("舊資料遷移失敗:", err);
+      }
     }
 
-    // ==================== 個人獨立記帳資料邏輯 ====================
-    function getRecordKey(email) {
-      return `bookkeeping_records_${email}`;
-    }
-
-    function getCurrentUser() {
-      const email = localStorage.getItem(SESSION_KEY);
-      return email ? getUsers()[email] : null;
-    }
-
-    function enterApp(user) {
+    async function enterApp(user) {
+      currentUser = user;
       document.getElementById("auth-section").classList.add("hidden");
       document.getElementById("app-section").classList.remove("hidden");
       document.getElementById("welcome-title").textContent = `你好，${user.name}！`;
       document.getElementById("current-user-email").textContent = `專屬帳號：${user.email}`;
-      renderRecords();
-    }
 
-    function getRecords() {
-      const user = getCurrentUser();
-      if (!user) return [];
-      try {
-        return JSON.parse(localStorage.getItem(getRecordKey(user.email))) || [];
-      } catch {
-        return [];
-      }
-    }
+      // 顯示載入中提示
+      document.getElementById("record-list").innerHTML =
+        `<tr><td colspan="6" style="text-align:center; color:var(--muted); padding:24px;">☁️ 正在從雲端同步您的記帳資料...</td></tr>`;
 
-    function saveRecords(records) {
-      const user = getCurrentUser();
-      if (!user) return;
-      localStorage.setItem(getRecordKey(user.email), JSON.stringify(records));
-    }
+      // 若本機有舊資料，自動上傳至雲端並清除本機快取
+      await migrateLocalRecordsIfNeeded(user.email);
 
-    function addRecord(e) {
-      e.preventDefault();
-      const type = document.getElementById("rec-type").value;
-      const category = document.getElementById("rec-category").value;
-      const date = document.getElementById("rec-date").value;
-      const amount = Number(document.getElementById("rec-amount").value);
-      const note = document.getElementById("rec-note").value.trim() || "-";
-
-      const records = getRecords();
-      records.unshift({
-        id: Date.now(),
-        type,
-        category,
-        date,
-        amount,
-        note
+      // 監聽此帳號的雲端紀錄（跨裝置即時同步）
+      if (unsubscribeRecords) unsubscribeRecords();
+      const q = query(collection(db, "records"), where("email", "==", user.email));
+      unsubscribeRecords = onSnapshot(q, (snapshot) => {
+        const list = [];
+        snapshot.forEach((docSnap) => {
+          list.push({ docId: docSnap.id, ...docSnap.data() });
+        });
+        // 依日期與建立時間由新到舊排序
+        list.sort((a, b) => {
+          if (b.date !== a.date) return b.date.localeCompare(a.date);
+          return (b.createdAt || 0) - (a.createdAt || 0);
+        });
+        currentRecords = list;
+        renderRecords();
+      }, (err) => {
+        console.error("即時同步監聽失敗:", err);
+        document.getElementById("record-list").innerHTML =
+          `<tr><td colspan="6" style="text-align:center; color:var(--expense); padding:24px;">雲端同步連線異常，請重新整理頁面。</td></tr>`;
       });
-      saveRecords(records);
-
-      document.getElementById("rec-amount").value = "";
-      document.getElementById("rec-note").value = "";
-      renderRecords();
     }
 
-    function deleteRecord(id) {
-      const records = getRecords().filter(r => r.id !== id);
-      saveRecords(records);
-      renderRecords();
-    }
+    window.addRecord = async function(e) {
+      e.preventDefault();
+      if (!currentUser) return;
+
+      const btn = document.getElementById("add-record-btn");
+      btn.disabled = true;
+      btn.textContent = "雲端儲存中...";
+
+      try {
+        const type = document.getElementById("rec-type").value;
+        const category = document.getElementById("rec-category").value;
+        const date = document.getElementById("rec-date").value;
+        const amount = Number(document.getElementById("rec-amount").value);
+        const note = document.getElementById("rec-note").value.trim() || "-";
+
+        await addDoc(collection(db, "records"), {
+          email: currentUser.email,
+          type,
+          category,
+          date,
+          amount,
+          note,
+          createdAt: Date.now()
+        });
+
+        document.getElementById("rec-amount").value = "";
+        document.getElementById("rec-note").value = "";
+      } catch (err) {
+        console.error("新增雲端紀錄失敗:", err);
+        alert("儲存至雲端失敗，請確認網路連線後再試。");
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "儲存紀錄";
+      }
+    };
+
+    window.deleteRecord = async function(docId) {
+      if (!currentUser) return;
+      try {
+        await deleteDoc(doc(db, "records", docId));
+      } catch (err) {
+        console.error("刪除雲端紀錄失敗:", err);
+        alert("刪除失敗，請稍後再試。");
+      }
+    };
 
     function renderRecords() {
-      const records = getRecords();
       let income = 0;
       let expense = 0;
 
       const tbody = document.getElementById("record-list");
       tbody.innerHTML = "";
 
-      if (records.length === 0) {
+      if (currentRecords.length === 0) {
         tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--muted); padding:24px;">目前尚無記帳紀錄，快新增第一筆收支吧！</td></tr>`;
       } else {
-        records.forEach(r => {
-          if (r.type === "income") income += r.amount;
-          else expense += r.amount;
+        currentRecords.forEach(r => {
+          if (r.type === "income") income += Number(r.amount);
+          else expense += Number(r.amount);
 
           const tr = document.createElement("tr");
           tr.innerHTML = `
-            <td>${r.date}</td>
+            <td>${escapeHTML(r.date)}</td>
             <td><span class="badge ${r.type}">${r.type === "income" ? "收入" : "支出"}</span></td>
-            <td>${r.category}</td>
+            <td>${escapeHTML(r.category)}</td>
             <td>${escapeHTML(r.note)}</td>
             <td class="${r.type === "income" ? "income-text" : "expense-text"}" style="font-weight:600;">
-              ${r.type === "income" ? "+" : "-"}$${r.amount.toLocaleString()}
+              ${r.type === "income" ? "+" : "-"}$${Number(r.amount).toLocaleString()}
             </td>
-            <td><button class="danger" onclick="deleteRecord(${r.id})">刪除</button></td>
+            <td><button class="danger" onclick="deleteRecord('${r.docId}')">刪除</button></td>
           `;
           tbody.appendChild(tr);
         });
@@ -485,20 +592,18 @@
       balEl.className = `stat-val ${bal >= 0 ? "income-text" : "expense-text"}`;
     }
 
-    function exportCSV() {
-      const user = getCurrentUser();
-      const records = getRecords();
-      if (!user || records.length === 0) {
+    window.exportCSV = function() {
+      if (!currentUser || currentRecords.length === 0) {
         alert("目前沒有可匯出的紀錄。");
         return;
       }
       const rows = [["日期", "類型", "分類", "備註", "金額"]];
-      records.forEach(r => {
+      currentRecords.forEach(r => {
         rows.push([
           r.date,
           r.type === "income" ? "收入" : "支出",
           r.category,
-          `"${r.note.replace(/"/g, '""')}"`,
+          `"${String(r.note).replace(/"/g, '""')}"`,
           r.type === "income" ? r.amount : -r.amount
         ]);
       });
@@ -507,13 +612,13 @@
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `記帳明細_${user.name}_${new Date().toISOString().split("T")[0]}.csv`;
+      a.download = `記帳明細_${currentUser.name}_${new Date().toISOString().split("T")[0]}.csv`;
       a.click();
       URL.revokeObjectURL(url);
-    }
+    };
 
     function escapeHTML(str) {
-      return str.replace(/[&<>"']/g, m => ({
+      return String(str).replace(/[&<>"']/g, m => ({
         "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
       }[m]));
     }
