@@ -3,13 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>台灣 GTA 3D：GPS 路線導航 & 縮放衛星開放世界</title>
+<title>台灣 GTA 3D：極致不規則曲線路網 & 衛星導航世界</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; -webkit-user-select: none; font-family: 'Microsoft JhengHei', sans-serif; }
   body { overflow: hidden; background: #07192c; touch-action: none; }
   canvas { display: block; }
 
-  /* 開場全台城市選擇主選單 */
   #start-screen {
     position: fixed; inset: 0; z-index: 1000;
     background: linear-gradient(135deg, rgba(10,20,38,0.95), rgba(20,35,55,0.92)),
@@ -18,7 +17,7 @@
     color: #fff; padding: 14px; text-align: center; backdrop-filter: blur(8px);
   }
   .game-logo {
-    font-size: clamp(24px, 4.8vw, 48px); font-weight: 900; letter-spacing: 3px;
+    font-size: clamp(24px, 4.6vw, 46px); font-weight: 900; letter-spacing: 3px;
     background: linear-gradient(90deg, #38bdf8, #4ade80, #facc15);
     -webkit-background-clip: text; -webkit-text-fill-color: transparent;
     margin-bottom: 4px;
@@ -26,7 +25,7 @@
   .game-sub { font-size: 13px; color: #cbd5e1; margin-bottom: 16px; }
   .menu-card {
     background: rgba(15, 23, 42, 0.92); border: 1px solid rgba(255,255,255,0.22);
-    border-radius: 18px; padding: 18px; width: 100%; max-width: 600px;
+    border-radius: 18px; padding: 18px; width: 100%; max-width: 620px;
     box-shadow: 0 20px 50px rgba(0,0,0,0.85);
   }
   .spawn-title { font-size: 14px; color: #94a3b8; margin-bottom: 10px; font-weight: bold; }
@@ -53,7 +52,6 @@
     font-size: 17px; font-weight: 900; cursor: pointer; letter-spacing: 2px;
   }
 
-  /* 右上角 HUD */
   #top-right-hud {
     position: fixed; top: 14px; right: 16px; text-align: right; color: #fff;
     text-shadow: 1px 2px 5px rgba(0,0,0,0.9); pointer-events: none; z-index: 20;
@@ -68,12 +66,11 @@
     font-size: 13px; color: #38bdf8; font-weight: bold;
   }
 
-  /* 左上角任務與提示 */
   #mission-hud {
     position: fixed; top: 14px; left: 16px; z-index: 20;
     background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(6px);
     padding: 10px 14px; border-radius: 10px; border-left: 4px solid #f59e0b;
-    color: #fff; font-size: 13px; max-width: 325px; pointer-events: none;
+    color: #fff; font-size: 13px; max-width: 330px; pointer-events: none;
   }
   #mission-title { font-weight: 900; color: #facc15; font-size: 14px; margin-bottom: 3px; }
   #mission-desc { color: #e2e8f0; line-height: 1.4; }
@@ -84,7 +81,6 @@
   }
   .pc-hint { margin-top: 6px; font-size: 11px; color: #94a3b8; line-height: 1.5; }
 
-  /* 右下角數位時速表 */
   #speedometer {
     position: fixed; bottom: 22px; right: 22px; z-index: 25;
     background: rgba(15, 23, 42, 0.86); border: 2px solid #38bdf8;
@@ -98,7 +94,6 @@
     font-size: 11px; font-weight: 900; padding: 2px 8px; border-radius: 4px; text-align: center;
   }
 
-  /* 左下角小地圖 + 血條 */
   #minimap-wrap {
     position: fixed; bottom: 18px; left: 18px; z-index: 20;
     width: 150px; height: 150px; border-radius: 50%;
@@ -126,7 +121,6 @@
   }
   .key-cap { background: #fff; color: #000; padding: 2px 7px; border-radius: 4px; font-weight: 900; }
 
-  /* 可縮放、可拖曳台灣衛星導航大地圖 (按 M 開啟) */
   #big-map-modal {
     position: fixed; inset: 0; z-index: 200; background: rgba(5, 12, 24, 0.96);
     display: none; flex-direction: column; align-items: center; justify-content: center; padding: 10px;
@@ -160,7 +154,6 @@
     color: #e2e8f0; font-size: 11px; pointer-events: none;
   }
 
-  /* 手機與超商面板 */
   #side-panel {
     position: fixed; right: 16px; bottom: 110px; width: 290px; z-index: 210;
     background: rgba(15, 23, 42, 0.96); border: 2px solid #38bdf8; border-radius: 20px;
@@ -175,7 +168,6 @@
   .panel-btn:hover { background: rgba(56, 189, 248, 0.25); }
   .panel-btn small { display: block; color: #4ade80; font-size: 11px; margin-top: 2px; font-weight: bold; }
 
-  /* 手機觸控搖桿與按鍵 */
   #mobile-controls { display: none; position: fixed; inset: 0; pointer-events: none; z-index: 50; }
   #joystick-zone {
     position: absolute; bottom: 175px; left: 24px; width: 120px; height: 120px;
@@ -209,44 +201,43 @@
 
 <div id="pause-banner">⏸ 遊戲時間已暫停</div>
 
-<!-- 開場全台縣市選擇介面 -->
 <div id="start-screen">
-  <div class="game-logo">🇹🇼 台灣 GTA 3D：GPS 導航 & 全島衛星世界</div>
-  <div class="game-sub">真實現實公路路徑規劃 • 衛星地圖無段縮放 • 3D 地面導航光帶</div>
+  <div class="game-logo">🇹🇼 台灣 GTA 3D：極致不規則曲線路網</div>
+  <div class="game-sub">Catmull-Rom 真實彎道公路 • 圓環與不規則街廓 • 彎道貼合 GPS 導航</div>
   <div class="menu-card">
     <div class="spawn-title">📍 請選擇出生縣市起點：</div>
     <div class="spawn-btns">
       <div class="spawn-btn selected" id="btn-yilan" onclick="selectCity('yilan')">
         <h3>🏮 宜蘭羅東</h3>
-        <p>羅東夜市、蘭陽平原</p>
+        <p>羅東圓環、九彎十八拐</p>
       </div>
       <div class="spawn-btn" id="btn-taipei" onclick="selectCity('taipei')">
         <h3>🏙️ 雙北都會</h3>
-        <p>台北101、西門町</p>
+        <p>台北101、淡水河彎道</p>
       </div>
       <div class="spawn-btn" id="btn-taoyuan" onclick="selectCity('taoyuan')">
         <h3>✈️ 桃園新竹</h3>
-        <p>桃園機場、竹科</p>
+        <p>五楊高架弧線、竹科</p>
       </div>
       <div class="spawn-btn" id="btn-taichung" onclick="selectCity('taichung')">
         <h3>🎡 台中彰化</h3>
-        <p>逢甲夜市、八卦山</p>
+        <p>台灣大道彎道、八卦山</p>
       </div>
       <div class="spawn-btn" id="btn-nantou" onclick="selectCity('nantou')">
         <h3>🏞️ 南投日月潭</h3>
-        <p>埔里、台灣地理中心</p>
+        <p>環湖公路、埔里山路</p>
       </div>
       <div class="spawn-btn" id="btn-chiayi" onclick="selectCity('chiayi')">
         <h3>🚂 雲林嘉義</h3>
-        <p>斗六、文化路夜市</p>
+        <p>噴水圓環、阿里山公路</p>
       </div>
       <div class="spawn-btn" id="btn-tainan" onclick="selectCity('tainan')">
         <h3>🏯 台南高雄</h3>
-        <p>赤崁樓、85大樓</p>
+        <p>七圓環放射街廓、愛河</p>
       </div>
       <div class="spawn-btn" id="btn-hualien" onclick="selectCity('hualien')">
         <h3>⛰️ 花蓮台東</h3>
-        <p>東大門、太魯閣</p>
+        <p>蘇花懸崖髮夾彎、海岸線</p>
       </div>
     </div>
 
@@ -255,19 +246,17 @@
       <input type="checkbox" id="god-mode-check">
     </label>
 
-    <button class="start-btn" onclick="startGame()">進入全台灣開放世界</button>
+    <button class="start-btn" onclick="startGame()">進入極致不規則路網台灣</button>
   </div>
 </div>
 
-<!-- 左上角任務欄與 GPS 導航狀態 -->
 <div id="mission-hud">
-  <div id="mission-title">📌 目前任務：全台灣環島探索</div>
-  <div id="mission-desc">按 M 打開台灣衛星地圖（可滾輪放大），點擊任意地點即自動規劃公路導航路線！</div>
+  <div id="mission-title">📌 目前任務：全台灣不規則公路探索</div>
+  <div id="mission-desc">按 M 打開台灣衛星地圖（可滾輪放大看真實彎道與圓環），點擊任意地點即沿彎道規劃導航！</div>
   <div id="nav-status">🧭 GPS 導航中：剩餘 0.0 km</div>
   <div class="pc-hint">WASD / 方向鍵：移動開車 | Space：手煞車甩尾<br>F：搶車/進超商 | M：衛星地圖 | T：免費手機 | Tab：換武器</div>
 </div>
 
-<!-- 右上角 HUD -->
 <div id="top-right-hud">
   <div class="time-weather" id="weather-hud">☀️ 14:24 &nbsp; 29°C &nbsp; 宜蘭縣羅東鎮</div>
   <div class="money">NT$ <span id="money-val">2,000</span></div>
@@ -275,24 +264,20 @@
   <div class="weapon-badge" id="weapon-hud">武器：空手 (拳頭)</div>
 </div>
 
-<!-- 右下角數位時速表 -->
 <div id="speedometer">
   <div id="speed-num">0</div>
   <div id="speed-unit">KM/H</div>
   <div id="drift-badge">🔥 DRIFT 甩尾中</div>
 </div>
 
-<!-- 互動提示 -->
 <div id="interact-prompt">按 <span class="key-cap">F</span> <span id="interact-label">搶廂型車</span></div>
 
-<!-- 小地圖與血條 -->
 <div id="minimap-wrap"><canvas id="minimap" width="150" height="150"></canvas></div>
 <div id="hp-wrap"><div id="hp-bar"></div></div>
 
-<!-- 可縮放台灣衛星大地圖 (按 M 開啟) -->
 <div id="big-map-modal">
   <div id="big-map-header">
-    <span>🗺️ 台灣衛星導航圖 (滾輪放大縮小 • 拖曳移動 • 點擊規劃導航路線)</span>
+    <span>🗺️ 台灣不規則路網衛星導航圖 (滾輪放大可看真實彎道與圓環 • 點擊規劃導航)</span>
     <div style="display:flex; gap:6px;">
       <button onclick="clearNavRoute()" style="padding:6px 12px; background:#0284c7; color:#fff; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">清除導航</button>
       <button onclick="toggleBigMap()" style="padding:6px 14px; background:#ef4444; color:#fff; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">關閉 (M)</button>
@@ -306,15 +291,13 @@
       <button class="zoom-btn" onclick="resetMapView()" style="font-size:12px;" title="重置縮放">1x</button>
     </div>
     <div class="map-legend">
-      🖱️ 滾輪/按鈕：縮放 (目前 <span id="zoom-level-txt">1.0x</span>) &nbsp;|&nbsp; 按住拖曳：平移 &nbsp;|&nbsp; 單擊：GPS 路線導航 &nbsp;|&nbsp; 雙擊：瞬移
+      🖱️ 滾輪/按鈕：縮放 (目前 <span id="zoom-level-txt">1.0x</span>) &nbsp;|&nbsp; 按住拖曳：平移 &nbsp;|&nbsp; 單擊：彎道 GPS 導航 &nbsp;|&nbsp; 雙擊：瞬移
     </div>
   </div>
 </div>
 
-<!-- 手機與超商共用面板 -->
 <div id="side-panel"></div>
 
-<!-- 手機版虛擬觸控 -->
 <div id="mobile-controls">
   <div id="joystick-zone"><div id="joystick-knob"></div></div>
   <div class="touch-btns">
@@ -332,7 +315,7 @@
 
 <script>
 // =========================================================
-// 1. 真實台灣 16 大縣市節點與公路網路拓樸 (用於 GPS 最短路徑規劃)
+// 1. 全台 16 縣市座標 & 確定性偽隨機地形演算法
 // =========================================================
 const TAIWAN_CITIES = {
   keelung:   { x: 640,  z: -3320, name: "基隆市", landmark: "基隆廟口夜市", h: 20 },
@@ -353,100 +336,203 @@ const TAIWAN_CITIES = {
   pingtung:  { x: -340, z: 2680,  name: "屏東縣", landmark: "墾丁大街 / 鵝鑾鼻", h: 20 }
 };
 
-// 全台公路網邊界連線 (雙向可通行，供 Dijkstra 演算法計算真實公路轉折路線)
-const ROAD_GRAPH_EDGES = [
-  ['keelung', 'taipei'],
-  ['taipei', 'taoyuan'],
-  ['taipei', 'yilan'],      // 國道五號雪山隧道
-  ['taoyuan', 'hsinchu'],
-  ['hsinchu', 'miaoli'],
-  ['miaoli', 'taichung'],
-  ['taichung', 'changhua'],
-  ['taichung', 'nantou'],    // 國道六號往埔里日月潭
-  ['changhua', 'yunlin'],
-  ['yunlin', 'chiayi'],
-  ['chiayi', 'tainan'],
-  ['tainan', 'kaohsiung'],
-  ['kaohsiung', 'pingtung'],
-  ['yilan', 'hualien'],      // 蘇花改公路
-  ['hualien', 'taitung'],    // 花東縱谷公路
-  ['taitung', 'pingtung']    // 南迴公路
-];
-
+// 高解析度不規則台灣海岸線多邊形 (包含半島、海灣、河口凹折)
 const TAIWAN_POLYGON = [
-  [540, -3560], [840, -3260], [820, -2200], [720, -500],
-  [440, 1400],  [120, 2600],  [-120, 3550], [-480, 2850],
-  [-720, 2100], [-860, 1250], [-760, 200],  [-620, -850],
-  [-420, -1450],[-180, -2150],[20, -2700],  [220, -3150]
+  [540, -3560], [630, -3510], [720, -3420], [840, -3260], [760, -3050],
+  [790, -2750], [820, -2450], [810, -2100], [760, -1650], [740, -1100],
+  [720, -500],  [640, 150],   [560, 800],   [440, 1400],  [320, 2000],
+  [120, 2600],  [-20, 3150],  [-120, 3550], [-210, 3300], [-360, 3020],
+  [-480, 2850], [-610, 2520], [-720, 2100], [-790, 1680], [-860, 1250],
+  [-810, 720],  [-760, 200],  [-690, -320], [-620, -850], [-510, -1150],
+  [-420, -1450],[-300, -1800],[-180, -2150],[-80, -2420], [20, -2700],
+  [120, -2920], [220, -3150], [380, -3380]
+];
+
+// 真實不規則曲線公路幹道定義 (每條路線含多個蜿蜒控制點，模擬真實國道、北宜九彎十八拐、蘇花懸崖、中橫山路)
+const CURVED_HIGHWAYS = [
+  { name: "國道一號北段", width: 26, color: "#eab308", pts: [[640,-3320], [560,-3240], [460,-3180], [350,-3090], [220,-2920], [150,-2710], [40,-2520]] },
+  { name: "國道一號中段", width: 26, color: "#eab308", pts: [[40,-2520], [-60,-2260], [-120,-1980], [-210,-1640], [-280,-1260], [-370,-1080], [-420,-920]] },
+  { name: "國道一號南段", width: 26, color: "#eab308", pts: [[-420,-920], [-490,-580], [-540,-260], [-580,40], [-560,320], [-640,810], [-680,1280], [-610,1740], [-560,2180], [-450,2450], [-340,2680]] },
+  { name: "國道三號山線弧線", width: 22, color: "#f59e0b", pts: [[460,-3180], [310,-2850], [140,-2450], [-20,-1920], [-160,-1280], [-290,-720], [-410,-180], [-460,420], [-510,1250], [-430,2150], [-340,2680]] },
+  { name: "國五雪隧 & 北宜九彎十八拐", width: 24, color: "#38bdf8", pts: [[460,-3180], [570,-3060], [610,-2880], [690,-2720], [650,-2560], [740,-2420]] },
+  { name: "蘇花改懸崖海岸蜿蜒公路", width: 22, color: "#38bdf8", pts: [[740,-2420], [775,-2050], [710,-1680], [745,-1280], [670,-860], [620,-420]] },
+  { name: "花東縱谷 & 台11線海岸雙弧", width: 22, color: "#38bdf8", pts: [[620,-420], [550,120], [490,680], [380,1180], [280,1680]] },
+  { name: "南迴公路山海髮夾彎", width: 20, color: "#38bdf8", pts: [[280,1680], [170,2120], [60,2480], [-90,2640], [-220,2560], [-340,2680]] },
+  { name: "中橫 / 國六埔里日月潭山路", width: 20, color: "#a855f7", pts: [[-280,-1260], [-140,-1050], [-50,-890], [20,-680], [160,-620], [380,-510], [620,-420]] }
 ];
 
 // =========================================================
-// 2. Dijkstra GPS 公路路徑規劃引擎 & 3D 地面導航發光路線
+// 2. 曲線路網圖論建立 (Catmull-Rom 樣條插值 + 細分圖論節點)
 // =========================================================
-let activeNavRoute = []; // 儲存從玩家 -> 各公路轉折節點 -> 終點座標 [{x, z}, ...]
+const irregularRoadPolylines = []; // 儲存所有不規則道路折線 [{ pts: [{x,z}...], width, isHighway, color }]
+const graphNodes = [];             // 細分後的導航圖節點 [{ id, x, z, neighbors: [{id, dist}] }]
+
+function addGraphEdge(idA, idB) {
+  const a = graphNodes[idA], b = graphNodes[idB];
+  const d = Math.hypot(a.x - b.x, a.z - b.z);
+  a.neighbors.push({ id: idB, dist: d });
+  b.neighbors.push({ id: idA, dist: d });
+}
+
+function getOrCreateGraphNode(x, z, snapRadius = 26) {
+  for (let i = 0; i < graphNodes.length; i++) {
+    if (Math.hypot(graphNodes[i].x - x, graphNodes[i].z - z) < snapRadius) {
+      return i;
+    }
+  }
+  const id = graphNodes.length;
+  graphNodes.push({ id, x, z, neighbors: [] });
+  return id;
+}
+
+// Catmull-Rom 樣條曲線插值器：將少數控制點轉為絲滑真實彎道
+function sampleCatmullRom(rawPts, subdivisions = 14) {
+  if (rawPts.length < 2) return rawPts.map(([x, z]) => ({ x, z }));
+  const result = [];
+  for (let i = 0; i < rawPts.length - 1; i++) {
+    const p0 = rawPts[Math.max(0, i - 1)];
+    const p1 = rawPts[i];
+    const p2 = rawPts[i + 1];
+    const p3 = rawPts[Math.min(rawPts.length - 1, i + 2)];
+
+    for (let s = 0; s < subdivisions; s++) {
+      const t = s / subdivisions;
+      const t2 = t * t;
+      const t3 = t2 * t;
+      const x = 0.5 * ((2 * p1[0]) + (-p0[0] + p2[0]) * t + (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * t2 + (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * t3);
+      const z = 0.5 * ((2 * p1[1]) + (-p0[1] + p2[1]) * t + (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2 + (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * t3);
+      result.push({ x, z });
+    }
+  }
+  const last = rawPts[rawPts.length - 1];
+  result.push({ x: last[0], z: last[1] });
+  return result;
+}
+
+// 註冊一條不規則道路並寫入導航圖論
+function registerCurvedRoad(sampledPts, width, isHighway = false, color = "#475569") {
+  irregularRoadPolylines.push({ pts: sampledPts, width, isHighway, color });
+  let prevNodeId = null;
+  for (let i = 0; i < sampledPts.length; i++) {
+    const nid = getOrCreateGraphNode(sampledPts[i].x, sampledPts[i].z, isHighway ? 35 : 18);
+    if (prevNodeId !== null && prevNodeId !== nid) {
+      addGraphEdge(prevNodeId, nid);
+    }
+    prevNodeId = nid;
+  }
+}
+
+// 1. 生成全台不規則高速公路曲線
+CURVED_HIGHWAYS.forEach(hw => {
+  const smoothPts = sampleCatmullRom(hw.pts, 12);
+  registerCurvedRoad(smoothPts, hw.width, true, hw.color);
+});
+
+// 2. 為全台 16 大縣市生成「不規則圓環 + 放射狀斜向大道 + 蜿蜒巷弄」
+Object.values(TAIWAN_CITIES).forEach((c, cIdx) => {
+  // (A) 市中心不規則圓環 (16邊形閉合曲線)
+  const ringR = 46 + (cIdx % 3) * 8;
+  const ringRaw = [];
+  for (let a = 0; a <= 12; a++) {
+    const ang = (a / 12) * Math.PI * 2;
+    const wobble = Math.sin(ang * 3 + cIdx) * 6;
+    ringRaw.push([c.x + Math.cos(ang) * (ringR + wobble), c.z + Math.sin(ang) * (ringR + wobble)]);
+  }
+  registerCurvedRoad(sampleCatmullRom(ringRaw, 4), 18, false, "#64748b");
+
+  // (B) 5 條不同角度的放射狀彎曲林蔭大道 (打破橫平豎直網格)
+  for (let spoke = 0; spoke < 5; spoke++) {
+    const baseAng = (spoke / 5) * Math.PI * 2 + (cIdx * 0.37);
+    const bend1 = Math.sin(cIdx + spoke) * 0.28;
+    const bend2 = Math.cos(cIdx - spoke) * 0.35;
+    const spokeRaw = [
+      [c.x + Math.cos(baseAng) * 35, c.z + Math.sin(baseAng) * 35],
+      [c.x + Math.cos(baseAng + bend1) * 115, c.z + Math.sin(baseAng + bend1) * 115],
+      [c.x + Math.cos(baseAng + bend2) * 210, c.z + Math.sin(baseAng + bend2) * 210]
+    ];
+    registerCurvedRoad(sampleCatmullRom(spokeRaw, 8), 16, false, "#64748b");
+  }
+
+  // (C) 外環蜿蜒聯絡弧道 (連接各放射大道)
+  const outerRaw = [];
+  for (let k = 0; k <= 8; k++) {
+    const ang = (k / 8) * Math.PI * 1.65 + cIdx;
+    const r = 135 + Math.cos(k * 1.7 + cIdx) * 24;
+    outerRaw.push([c.x + Math.cos(ang) * r, c.z + Math.sin(ang) * r]);
+  }
+  registerCurvedRoad(sampleCatmullRom(outerRaw, 6), 14, false, "#64748b");
+});
+
+// =========================================================
+// 3. 高精度彎道貼合 Dijkstra GPS 導航引擎
+// =========================================================
+let activeNavRoute = [];
 let navDestinationName = "";
 
 function computeGPSRoute(destX, destZ, customLabel = "") {
-  // 1. 找出離玩家最近的公路節點，以及離目的地最近的公路節點
-  let startKey = null, endKey = null;
+  if (graphNodes.length === 0) return;
+
+  // 找離玩家與目的地最近的道路圖節點
+  let startId = 0, endId = 0;
   let minStartD = Infinity, minEndD = Infinity;
-
-  Object.entries(TAIWAN_CITIES).forEach(([k, c]) => {
-    const d1 = Math.hypot(player.x - c.x, player.z - c.z);
-    if (d1 < minStartD) { minStartD = d1; startKey = k; }
-    const d2 = Math.hypot(destX - c.x, destZ - c.z);
-    if (d2 < minEndD) { minEndD = d2; endKey = k; }
-  });
-
-  // 2. 建立鄰接表並執行 Dijkstra 最短路徑演算法
-  const adj = {};
-  Object.keys(TAIWAN_CITIES).forEach(k => adj[k] = []);
-  ROAD_GRAPH_EDGES.forEach(([a, b]) => {
-    const ca = TAIWAN_CITIES[a], cb = TAIWAN_CITIES[b];
-    const w = Math.hypot(ca.x - cb.x, ca.z - cb.z);
-    adj[a].push({ node: b, w });
-    adj[b].push({ node: a, w });
-  });
-
-  const dist = {}, prev = {}, visited = new Set();
-  Object.keys(TAIWAN_CITIES).forEach(k => dist[k] = Infinity);
-  dist[startKey] = 0;
-
-  while (true) {
-    let u = null, best = Infinity;
-    Object.keys(TAIWAN_CITIES).forEach(k => {
-      if (!visited.has(k) && dist[k] < best) { best = dist[k]; u = k; }
-    });
-    if (!u || u === endKey) break;
-    visited.add(u);
-    adj[u].forEach(({ node, w }) => {
-      if (dist[u] + w < dist[node]) {
-        dist[node] = dist[u] + w;
-        prev[node] = u;
-      }
-    });
+  for (let i = 0; i < graphNodes.length; i++) {
+    const n = graphNodes[i];
+    const d1 = Math.hypot(player.x - n.x, player.z - n.z);
+    if (d1 < minStartD) { minStartD = d1; startId = i; }
+    const d2 = Math.hypot(destX - n.x, destZ - n.z);
+    if (d2 < minEndD) { minEndD = d2; endId = i; }
   }
 
-  // 3. 回溯組裝完整公路路線座標陣列
-  const nodePath = [];
-  let curr = endKey;
-  while (curr) {
-    nodePath.unshift(curr);
-    curr = prev[curr];
+  // Dijkstra 最短路徑搜尋 (沿著所有不規則彎道節點前進)
+  const N = graphNodes.length;
+  const dist = new Float64Array(N).fill(Infinity);
+  const prev = new Int32Array(N).fill(-1);
+  const visited = new Uint8Array(N);
+  dist[startId] = 0;
+
+  for (let step = 0; step < N; step++) {
+    let u = -1, best = Infinity;
+    for (let i = 0; i < N; i++) {
+      if (!visited[i] && dist[i] < best) { best = dist[i]; u = i; }
+    }
+    if (u === -1 || u === endId) break;
+    visited[u] = 1;
+
+    const nbrs = graphNodes[u].neighbors;
+    for (let j = 0; j < nbrs.length; j++) {
+      const { id: v, dist: w } = nbrs[j];
+      if (!visited[v] && dist[u] + w < dist[v]) {
+        dist[v] = dist[u] + w;
+        prev[v] = u;
+      }
+    }
   }
 
   const pts = [{ x: player.x, z: player.z }];
-  nodePath.forEach(k => {
-    const c = TAIWAN_CITIES[k];
-    // 若距離玩家已經很近則略過起點重複折返
-    if (Math.hypot(c.x - player.x, c.z - player.z) > 45) {
-      pts.push({ x: c.x, z: c.z });
+  const pathIds = [];
+  let curr = endId;
+  while (curr !== -1) {
+    pathIds.unshift(curr);
+    curr = prev[curr];
+  }
+  pathIds.forEach(id => {
+    const n = graphNodes[id];
+    if (Math.hypot(n.x - player.x, n.z - player.z) > 18) {
+      pts.push({ x: n.x, z: n.z });
     }
   });
   pts.push({ x: destX, z: destZ });
 
+  // 判斷最近縣市名稱
+  let nearestName = "自訂不規則路網目標";
+  let minCityD = 220;
+  Object.values(TAIWAN_CITIES).forEach(c => {
+    const d = Math.hypot(destX - c.x, destZ - c.z);
+    if (d < minCityD) { minCityD = d; nearestName = c.name; }
+  });
+
   activeNavRoute = pts;
-  navDestinationName = customLabel || (minEndD < 180 ? TAIWAN_CITIES[endKey].name : "自訂導航目標點");
+  navDestinationName = customLabel || nearestName;
   rebuild3DNavLine();
   updateNavStatusHUD();
 }
@@ -465,8 +551,12 @@ function updateNavStatusHUD() {
     el.style.display = 'none';
     return;
   }
-  // 動態更新路線第一個點為玩家當前位置
   activeNavRoute[0] = { x: player.x, z: player.z };
+  // 若玩家已通過第二個節點則自動消除舊節點
+  while (activeNavRoute.length > 2 && Math.hypot(activeNavRoute[1].x - player.x, activeNavRoute[1].z - player.z) < 25) {
+    activeNavRoute.splice(1, 1);
+  }
+
   let totalDist = 0;
   for (let i = 0; i < activeNavRoute.length - 1; i++) {
     totalDist += Math.hypot(activeNavRoute[i+1].x - activeNavRoute[i].x, activeNavRoute[i+1].z - activeNavRoute[i].z);
@@ -477,7 +567,7 @@ function updateNavStatusHUD() {
     return;
   }
   el.style.display = 'block';
-  el.innerText = `🧭 導航至【${navDestinationName}】• 沿地面藍光行駛 (${(totalDist / 100).toFixed(1)} km)`;
+  el.innerText = `🧭 導航至【${navDestinationName}】• 沿彎道藍光行駛 (${(totalDist / 100).toFixed(1)} km)`;
 }
 
 let selectedCity = 'yilan';
@@ -501,7 +591,7 @@ function updatePauseState() {
 }
 
 // =========================================================
-// 3. Three.js 3D 引擎與衛星級 3D 台灣島嶼 + 3D 地面導航光帶
+// 4. Three.js 3D 引擎與衛星級 3D 台灣島嶼 + 彎道貼合渲染
 // =========================================================
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x7dd3fc);
@@ -528,30 +618,33 @@ function rebuild3DNavLine() {
   }
   if (activeNavRoute.length < 2) return;
 
-  const mat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.85 });
+  const mat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.88 });
   for (let i = 0; i < activeNavRoute.length - 1; i++) {
     const p1 = activeNavRoute[i], p2 = activeNavRoute[i + 1];
+    // 只建立玩家周圍 700m 內的 3D 導航光帶以維持極致流暢度
+    if (Math.abs(p1.x - player.x) > 700 && Math.abs(p2.x - player.x) > 700) continue;
+    if (Math.abs(p1.z - player.z) > 700 && Math.abs(p2.z - player.z) > 700) continue;
+
     const dx = p2.x - p1.x, dz = p2.z - p1.z;
     const len = Math.hypot(dx, dz);
-    if (len < 1) continue;
-    const strip = new THREE.Mesh(new THREE.PlaneGeometry(3.2, len), mat);
+    if (len < 0.5) continue;
+    const strip = new THREE.Mesh(new THREE.PlaneGeometry(3.4, len + 1.5), mat);
     strip.rotation.x = -Math.PI / 2;
     strip.rotation.z = -Math.atan2(dx, dz);
     strip.position.set((p1.x + p2.x) / 2, 0.25, (p1.z + p2.z) / 2);
     nav3DGroup.add(strip);
   }
 
-  // 終點光柱
   const dest = activeNavRoute[activeNavRoute.length - 1];
   const beacon = new THREE.Mesh(
-    new THREE.CylinderGeometry(2.5, 2.5, 80, 16, 1, true),
-    new THREE.MeshBasicMaterial({ color: 0xef4444, transparent: true, opacity: 0.45, side: THREE.DoubleSide })
+    new THREE.CylinderGeometry(2.5, 2.5, 85, 16, 1, true),
+    new THREE.MeshBasicMaterial({ color: 0xef4444, transparent: true, opacity: 0.5, side: THREE.DoubleSide })
   );
-  beacon.position.set(dest.x, 40, dest.z);
+  beacon.position.set(dest.x, 42.5, dest.z);
   nav3DGroup.add(beacon);
 }
 
-// 海洋與台灣本島陸地
+// 海洋與真實不規則海岸線台灣陸地
 const ocean = new THREE.Mesh(
   new THREE.PlaneGeometry(16000, 18000),
   new THREE.MeshStandardMaterial({ color: 0x0a2e52, roughness: 0.4 })
@@ -590,52 +683,44 @@ mountainSpine.forEach(([mx, mz, mw, mh, md]) => {
   scene.add(m);
 });
 
-// =========================================================
-// 4. 全台灣高速公路網 & 各縣市井字街道
-// =========================================================
-const roads = [];
-function buildRoadRect(x, z, w, d, hasMedian = false) {
-  const road = new THREE.Mesh(
-    new THREE.PlaneGeometry(w, d),
-    new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.85 })
-  );
-  road.rotation.x = -Math.PI / 2;
-  road.position.set(x, 0.08, z);
-  scene.add(road);
-  roads.push({ x, z, w, d });
+// 將所有不規則曲線道路具現化為 3D 柏油彎道與雙黃線 (並支援動態視距串流)
+const dynamicRoadChunks = [];
+const asphaltMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.85 });
+const yellowLineMat = new THREE.MeshBasicMaterial({ color: 0xfacc15 });
 
-  if (hasMedian && d > w) {
-    const median = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.35, d), new THREE.MeshStandardMaterial({ color: 0x15803d }));
-    median.position.set(x, 0.18, z);
-    scene.add(median);
+irregularRoadPolylines.forEach(poly => {
+  const chunkGroup = new THREE.Group();
+  let sumX = 0, sumZ = 0;
+  poly.pts.forEach(p => { sumX += p.x; sumZ += p.z; });
+  const cx = sumX / poly.pts.length;
+  const cz = sumZ / poly.pts.length;
+
+  for (let i = 0; i < poly.pts.length - 1; i++) {
+    const p1 = poly.pts[i], p2 = poly.pts[i + 1];
+    const dx = p2.x - p1.x, dz = p2.z - p1.z;
+    const len = Math.hypot(dx, dz);
+    if (len < 0.5) continue;
+    const ang = Math.atan2(dx, dz);
+
+    const seg = new THREE.Mesh(new THREE.PlaneGeometry(poly.width, len + poly.width * 0.45), asphaltMat);
+    seg.rotation.x = -Math.PI / 2;
+    seg.rotation.z = -ang;
+    seg.position.set((p1.x + p2.x) / 2, 0.08, (p1.z + p2.z) / 2);
+    chunkGroup.add(seg);
+
+    // 道路中央雙黃線標線
+    const line = new THREE.Mesh(new THREE.PlaneGeometry(0.45, len * 0.75), yellowLineMat);
+    line.rotation.x = -Math.PI / 2;
+    line.rotation.z = -ang;
+    line.position.set((p1.x + p2.x) / 2, 0.11, (p1.z + p2.z) / 2);
+    chunkGroup.add(line);
   }
-}
-
-// 鋪設連結全台灣 16 縣市的洲際公路
-ROAD_GRAPH_EDGES.forEach(([k1, k2]) => {
-  const c1 = TAIWAN_CITIES[k1], c2 = TAIWAN_CITIES[k2];
-  const dx = c2.x - c1.x, dz = c2.z - c1.z;
-  const len = Math.hypot(dx, dz);
-  const ang = Math.atan2(dx, dz);
-  const hw = new THREE.Mesh(
-    new THREE.PlaneGeometry(28, len + 28),
-    new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.85 })
-  );
-  hw.rotation.x = -Math.PI / 2;
-  hw.rotation.z = -ang;
-  hw.position.set((c1.x + c2.x) / 2, 0.07, (c1.z + c2.z) / 2);
-  scene.add(hw);
-});
-
-Object.values(TAIWAN_CITIES).forEach(c => {
-  buildRoadRect(c.x, c.z - 55, 280, 24, false);
-  buildRoadRect(c.x, c.z + 55, 280, 24, false);
-  buildRoadRect(c.x - 65, c.z, 22, 220, false);
-  buildRoadRect(c.x + 65, c.z, 22, 220, true);
+  scene.add(chunkGroup);
+  dynamicRoadChunks.push({ mesh: chunkGroup, x: cx, z: cz, isHighway: poly.isHighway });
 });
 
 // =========================================================
-// 5. 實體碰撞箱、全台 16 縣市地標建築、可進入 7-TWELVE 與民宅
+// 5. 實體碰撞箱、全台 16 縣市地標、7-TWELVE 與沿彎道排列之不規則建築
 // =========================================================
 const colliders = [];
 const enterableStores = [];
@@ -652,7 +737,15 @@ function makeSignTex(bg, title, sub = "") {
   return new THREE.CanvasTexture(c);
 }
 
-function createSolidBuilding(x, z, w, h, d, color, label = "", signBg = "#1e293b", isHouse = false) {
+// 檢查座標是否壓在不規則路面上，避免建築擋住彎道
+function isNearAnyRoad(x, z, clearance = 16) {
+  for (let i = 0; i < graphNodes.length; i++) {
+    if (Math.hypot(graphNodes[i].x - x, graphNodes[i].z - z) < clearance) return true;
+  }
+  return false;
+}
+
+function createSolidBuilding(x, z, w, h, d, color, label = "", signBg = "#1e293b", isHouse = false, rotY = 0) {
   const g = new THREE.Group();
   const body = new THREE.Mesh(
     new THREE.BoxGeometry(w, h, d),
@@ -687,13 +780,15 @@ function createSolidBuilding(x, z, w, h, d, color, label = "", signBg = "#1e293b
   }
 
   g.position.set(x, 0, z);
+  g.rotation.y = rotY;
   scene.add(g);
   dynamicBuildings.push({ mesh: g, x, z });
 
+  const r = Math.max(w, d) * 0.52;
   colliders.push({
-    minX: x - w / 2 - 0.6, maxX: x + w / 2 + 0.6,
-    minZ: z - d / 2 - 0.6, maxZ: z + d / 2 + 0.6,
-    isLandmark: !!label
+    minX: x - r, maxX: x + r,
+    minZ: z - r, maxZ: z + r,
+    rotY
   });
 }
 
@@ -736,14 +831,22 @@ function createEnterableStore(x, z, branchName) {
 
 Object.values(TAIWAN_CITIES).forEach((c, idx) => {
   const colors = [0x991b1b, 0x1e40af, 0x0f766e, 0xb45309, 0x0369a1];
-  createSolidBuilding(c.x - 32, c.z - 25, 32, c.h || 20, 26, colors[idx % colors.length], c.landmark, "#b91c1c");
-  createEnterableStore(c.x + 32, c.z - 25, c.name + "門市");
+  // 圓環中央紀念碑 / 地標大樓
+  createSolidBuilding(c.x, c.z, 26, c.h || 20, 26, colors[idx % colors.length], c.landmark, "#b91c1c", false, (idx * 0.4));
+  // 圓環旁可進入超商
+  createEnterableStore(c.x + 68, c.z - 22, c.name + "門市");
 
-  const houseOffsets = [[-95, -20], [-95, 25], [95, -20], [95, 25], [-30, 25]];
-  houseOffsets.forEach(([ox, oz], hIdx) => {
-    const hCols = [0xe2e8f0, 0xfde68a, 0xfed7aa, 0xcbd5e1];
-    createSolidBuilding(c.x + ox, c.z + oz, 16, 11 + (hIdx % 2) * 3.5, 15, hCols[hIdx % hCols.length], "", "", true);
-  });
+  // 沿著不規則放射街廓散佈旋轉角度各異的透天民宅
+  for (let h = 0; h < 12; h++) {
+    const ang = (h / 12) * Math.PI * 2 + idx * 0.5;
+    const rad = 85 + (h % 3) * 38;
+    const hx = c.x + Math.cos(ang) * rad;
+    const hz = c.z + Math.sin(ang) * rad;
+    if (!isNearAnyRoad(hx, hz, 18)) {
+      const hCols = [0xe2e8f0, 0xfde68a, 0xfed7aa, 0xcbd5e1];
+      createSolidBuilding(hx, hz, 14, 10 + (h % 3) * 3.5, 13, hCols[h % hCols.length], "", "", true, ang + Math.PI / 2);
+    }
+  }
 });
 
 // =========================================================
@@ -769,7 +872,7 @@ const playerMesh = createCharacterMesh(0x166534, 0x1e293b, false);
 scene.add(playerMesh);
 
 const player = {
-  x: 740, z: -2420, rotY: 0, speed: 0.36,
+  x: 740, z: -2465, rotY: 0, speed: 0.36,
   hp: 100, money: 2000, wanted: 0,
   weapons: [
     { name: "空手 (拳頭)", owned: true, ammo: Infinity, dmg: 25, range: 3.8 },
@@ -867,10 +970,10 @@ function spawnVehicle(type, x, z, rotY = 0) {
 }
 
 Object.values(TAIWAN_CITIES).forEach(c => {
-  spawnVehicle("van", c.x - 10, c.z - 52, Math.PI / 2);
-  spawnVehicle("taxi", c.x + 12, c.z + 52, -Math.PI / 2);
-  spawnVehicle("scooter", c.x + 6, c.z - 12, 0);
-  spawnVehicle("supercar", c.x - 20, c.z + 15, Math.PI);
+  spawnVehicle("van", c.x - 10, c.z - 46, Math.PI / 2);
+  spawnVehicle("taxi", c.x + 12, c.z + 46, -Math.PI / 2);
+  spawnVehicle("scooter", c.x + 46, c.z - 12, 0);
+  spawnVehicle("supercar", c.x - 46, c.z + 15, Math.PI);
 });
 
 const footCops = [];
@@ -885,7 +988,7 @@ function spawnFootCop(x, z) {
 // 7. 環島任務 & 路人 NPC
 // =========================================================
 const missions = [
-  { title: "📦 雪山隧道極速快遞", desc: "搶一台超跑，沿著地面 GPS 藍光導航路線開往【台北 101 大樓】！", startX: 730, startZ: -2410, endX: 460, endZ: -3180, reward: 10000 }
+  { title: "📦 北宜九彎十八拐極速快遞", desc: "搶一台超跑，沿著彎曲的地面 GPS 藍光導航路線衝往【台北 101 大樓】！", startX: 740, startZ: -2475, endX: 460, endZ: -3225, reward: 12000 }
 ];
 let activeMission = null;
 
@@ -898,13 +1001,13 @@ missionRing.position.set(missions[0].startX, 0.22, missions[0].startZ);
 scene.add(missionRing);
 
 const npcs = [];
-const quotes = ["真的假的？", "按 M 滾輪可以放大衛星地圖耶！", "點地圖會自動規劃公路導航路線喔！", "跟著地面藍光開就能環島了！", "Space 鍵甩尾超帥！"];
+const quotes = ["這彎道跟真實北宜公路一模一樣！", "按 M 滾輪放大看圓環跟不規則巷弄！", "GPS 導航線會貼著所有彎道轉折耶！", "Space 鍵過彎甩尾超爽！", "歡迎來到台灣不規則路網開放世界！"];
 const bubblesLayer = document.getElementById("bubbles-layer");
 
 Object.values(TAIWAN_CITIES).forEach((c, cIdx) => {
   for (let i = 0; i < 3; i++) {
-    const nx = c.x + (Math.random() - 0.5) * 80;
-    const nz = c.z + (Math.random() - 0.5) * 80;
+    const nx = c.x + (Math.random() - 0.5) * 90;
+    const nz = c.z + (Math.random() - 0.5) * 90;
     const mesh = createCharacterMesh(Math.random() > 0.5 ? 0xf8fafc : 0x38bdf8, 0x334155, false);
     mesh.position.set(nx, 0, nz);
     scene.add(mesh);
@@ -932,7 +1035,7 @@ function checkWallCollision(nx, nz, radius = 0.8) {
 }
 
 // =========================================================
-// 9. 輸入控制 (WASD + 上下左右方向鍵 + Space甩尾 + 手機搖桿)
+// 9. 輸入控制
 // =========================================================
 const keys = {};
 let joyVec = { x: 0, z: 0 };
@@ -948,7 +1051,7 @@ function startGame() {
   }
   const sp = TAIWAN_CITIES[selectedCity] || TAIWAN_CITIES.yilan;
   player.x = sp.x;
-  player.z = sp.z;
+  player.z = sp.z - 45; // 出生在圓環北側彎道上
 
   document.getElementById('start-screen').style.display = 'none';
   if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
@@ -1111,13 +1214,13 @@ function addWanted(amt) {
 }
 
 function updateHUD() {
-  let nearestCity = "台灣環島公路";
+  let nearestCity = "台灣不規則山海公路";
   let minD = Infinity;
   Object.values(TAIWAN_CITIES).forEach(c => {
     const d = Math.hypot(player.x - c.x, player.z - c.z);
     if (d < minD) { minD = d; nearestCity = c.name; }
   });
-  if (minD > 350) nearestCity = player.x > 150 ? "花東海岸公路" : "西部國道一號";
+  if (minD > 350) nearestCity = player.x > 150 ? "蘇花 / 花東彎道公路" : "西部國道曲折路段";
 
   document.getElementById('weather-hud').innerText = `☀️ 14:24  29°C  ${nearestCity}`;
   document.getElementById('money-val').innerText = isGodMode ? "∞ 無限" : player.money.toLocaleString();
@@ -1154,7 +1257,7 @@ function openPhone() {
   updatePauseState();
   let tpButtons = '';
   Object.entries(TAIWAN_CITIES).forEach(([k, c]) => {
-    tpButtons += `<button class="panel-btn" onclick="navToCity('${k}')">🧭 導航至：${c.name} (${c.landmark})<small>規劃公路路線 (免費)</small></button>`;
+    tpButtons += `<button class="panel-btn" onclick="navToCity('${k}')">🧭 彎道導航：${c.name} (${c.landmark})<small>沿不規則公路規劃 (免費)</small></button>`;
   });
   p.innerHTML = `
     <div class="panel-title">📱 台灣智慧通 (全功能免費)</div>
@@ -1169,7 +1272,7 @@ function openPhone() {
 window.navToCity = (cityKey) => {
   const sp = TAIWAN_CITIES[cityKey];
   if (sp) {
-    computeGPSRoute(sp.x, sp.z, sp.name);
+    computeGPSRoute(sp.x, sp.z - 45, sp.name);
     closePanels();
   }
 };
@@ -1200,7 +1303,7 @@ window.buyItem = (type, cost) => {
 };
 
 // =========================================================
-// 11. 可無段縮放、拖曳平移之台灣衛星地圖 (Zoom 1x ~ 6x)
+// 11. 可無段縮放、拖曳平移之台灣不規則路網衛星地圖 (Zoom 1x ~ 8x)
 // =========================================================
 let mapZoom = 1.0;
 let mapPanX = 0;
@@ -1220,7 +1323,7 @@ function toggleBigMap() {
 
 function zoomMap(factor, centerX = 280, centerY = 440) {
   const oldZoom = mapZoom;
-  mapZoom = Math.max(1.0, Math.min(6.0, mapZoom * factor));
+  mapZoom = Math.max(1.0, Math.min(8.0, mapZoom * factor));
   if (mapZoom === 1.0) {
     mapPanX = 0;
     mapPanY = 0;
@@ -1242,7 +1345,6 @@ function resetMapView() {
 const bigCanvas = document.getElementById('big-map-canvas');
 const bCtx = bigCanvas.getContext('2d');
 
-// 基礎座標轉換 (1.0x)
 function baseWorldToMap(wx, wz) {
   return {
     mx: 280 + (wx / 1400) * 260,
@@ -1261,7 +1363,6 @@ function screenToWorld(clientX, clientY) {
   };
 }
 
-// 滑鼠滾輪放大縮小
 bigCanvas.addEventListener('wheel', e => {
   e.preventDefault();
   const rect = bigCanvas.getBoundingClientRect();
@@ -1270,7 +1371,6 @@ bigCanvas.addEventListener('wheel', e => {
   zoomMap(e.deltaY < 0 ? 1.25 : 0.8, cx, cy);
 }, { passive: false });
 
-// 滑鼠拖曳平移 & 單擊設定 GPS 導航路線
 bigCanvas.addEventListener('mousedown', e => {
   isDraggingMap = true;
   dragMoved = false;
@@ -1301,7 +1401,6 @@ window.addEventListener('mouseup', e => {
   }
 });
 
-// 雙擊地圖直接瞬移
 bigCanvas.addEventListener('dblclick', e => {
   const dest = screenToWorld(e.clientX, e.clientY);
   if (player.inVehicle) player.inVehicle.mesh.position.set(dest.x, 0, dest.z);
@@ -1311,7 +1410,6 @@ bigCanvas.addEventListener('dblclick', e => {
   updateHUD();
 });
 
-// 手機雙指縮放與單指拖曳支援
 let lastPinchDist = null;
 bigCanvas.addEventListener('touchstart', e => {
   if (e.touches.length === 1) {
@@ -1362,7 +1460,7 @@ function drawBigMap() {
   bCtx.fillStyle = seaGrad;
   bCtx.fillRect(-1000, -1000, 3000, 3000);
 
-  // 2. 繪製直立台灣本島輪廓
+  // 2. 不規則台灣本島輪廓
   bCtx.save();
   bCtx.beginPath();
   TAIWAN_POLYGON.forEach(([px, pz], idx) => {
@@ -1392,28 +1490,26 @@ function drawBigMap() {
     bCtx.fill();
   }
 
-  // 4. 金黃色高速公路網底圖
-  bCtx.strokeStyle = "#eab308";
-  bCtx.lineWidth = Math.max(1.2, 2.5 / Math.sqrt(mapZoom));
-  ROAD_GRAPH_EDGES.forEach(([k1, k2]) => {
-    const c1 = TAIWAN_CITIES[k1], c2 = TAIWAN_CITIES[k2];
-    const p1 = baseWorldToMap(c1.x, c1.z);
-    const p2 = baseWorldToMap(c2.x, c2.z);
+  // 4. 繪製全台灣不規則蜿蜒高速公路與縣市圓環放射路網
+  irregularRoadPolylines.forEach(poly => {
+    if (!poly.isHighway && mapZoom < 1.6) return;
+    bCtx.strokeStyle = poly.isHighway ? poly.color : "#94a3b8";
+    bCtx.lineWidth = poly.isHighway
+      ? Math.max(1.2, 2.5 / Math.sqrt(mapZoom))
+      : Math.max(0.8, 1.8 / mapZoom);
+    bCtx.lineCap = "round";
+    bCtx.lineJoin = "round";
     bCtx.beginPath();
-    bCtx.moveTo(p1.mx, p1.my);
-    bCtx.lineTo(p2.mx, p2.my);
+    poly.pts.forEach((pt, i) => {
+      const p = baseWorldToMap(pt.x, pt.z);
+      if (i === 0) bCtx.moveTo(p.mx, p.my);
+      else bCtx.lineTo(p.mx, p.my);
+    });
     bCtx.stroke();
   });
 
-  // 5. 放大超過 1.8x 時，直接顯示各縣市的市區井字街道與建築方塊！
-  if (mapZoom >= 1.8) {
-    bCtx.fillStyle = "#64748b";
-    roads.forEach(r => {
-      const p = baseWorldToMap(r.x - r.w / 2, r.z - r.d / 2);
-      const rw = (r.w / 1400) * 260;
-      const rd = (r.d / 3800) * 410;
-      bCtx.fillRect(p.mx, p.my, rw, rd);
-    });
+  // 5. 放大超過 2.0x 時，繪製各縣市旋轉角度各異的不規則街廓建築
+  if (mapZoom >= 2.0) {
     bCtx.fillStyle = "#cbd5e1";
     colliders.forEach(c => {
       const p = baseWorldToMap(c.minX, c.minZ);
@@ -1424,7 +1520,7 @@ function drawBigMap() {
   }
   bCtx.restore();
 
-  // 離島：綠島、蘭嶼、小琉球、澎湖群島
+  // 離島
   const islands = [
     { name: "澎湖", mx: 65, my: 510, r: 9 },
     { name: "小琉球", mx: 155, my: 725, r: 4 },
@@ -1438,7 +1534,7 @@ function drawBigMap() {
     bCtx.fillText(isl.name, isl.mx + 10, isl.my + 4);
   });
 
-  // 6. 繪製 GPS 公路導航藍色發光路線！
+  // 6. 繪製沿著不規則彎道轉折的 GPS 導航發光路線
   if (activeNavRoute.length >= 2) {
     bCtx.save();
     bCtx.strokeStyle = "#0ea5e9";
@@ -1497,12 +1593,24 @@ function drawMinimap() {
   miniCtx.save(); miniCtx.translate(75, 75); miniCtx.rotate(camYaw);
   const s = 0.65;
 
-  miniCtx.fillStyle = "#475569";
-  roads.forEach(r => {
-    if (Math.abs(r.x - player.x) < 400 && Math.abs(r.z - player.z) < 400) {
-      miniCtx.fillRect((r.x - player.x - r.w/2) * s, (r.z - player.z - r.d/2) * s, r.w * s, r.d * s);
-    }
+  // 小地圖同步渲染不規則彎曲道路
+  miniCtx.strokeStyle = "#64748b";
+  miniCtx.lineCap = "round";
+  miniCtx.lineJoin = "round";
+  irregularRoadPolylines.forEach(poly => {
+    const p0 = poly.pts[0];
+    if (Math.abs(p0.x - player.x) > 900 && Math.abs(p0.z - player.z) > 900) return;
+    miniCtx.lineWidth = poly.width * s;
+    miniCtx.beginPath();
+    poly.pts.forEach((pt, idx) => {
+      const rx = (pt.x - player.x) * s;
+      const rz = (pt.z - player.z) * s;
+      if (idx === 0) miniCtx.moveTo(rx, rz);
+      else miniCtx.lineTo(rx, rz);
+    });
+    miniCtx.stroke();
   });
+
   miniCtx.fillStyle = "#0ea5e9";
   colliders.forEach(c => {
     if (Math.abs(c.minX - player.x) < 160 && Math.abs(c.minZ - player.z) < 160) {
@@ -1510,7 +1618,6 @@ function drawMinimap() {
     }
   });
 
-  // 小地圖同步繪製藍色 GPS 導航線
   if (activeNavRoute.length >= 2) {
     miniCtx.strokeStyle = "#38bdf8";
     miniCtx.lineWidth = 4;
@@ -1551,10 +1658,16 @@ function animate() {
   if (!gameStarted || isPaused) { renderer.render(scene, camera); return; }
   tick++;
 
+  // 動態視距串流優化 (建築 + 不規則道路區塊)
   if (tick % 10 === 0) {
     for (let i = 0; i < dynamicBuildings.length; i++) {
       const b = dynamicBuildings[i];
       b.mesh.visible = (Math.abs(b.x - player.x) < 500 && Math.abs(b.z - player.z) < 500);
+    }
+    for (let i = 0; i < dynamicRoadChunks.length; i++) {
+      const r = dynamicRoadChunks[i];
+      const range = r.isHighway ? 1600 : 550;
+      r.mesh.visible = (Math.abs(r.x - player.x) < range && Math.abs(r.z - player.z) < range);
     }
   }
 
@@ -1621,7 +1734,6 @@ function animate() {
     document.getElementById('speed-num').innerText = kmh;
   }
 
-  // 即時更新 GPS 導航路線起點與距離
   if (activeNavRoute.length >= 2 && tick % 8 === 0) {
     updateNavStatusHUD();
     rebuild3DNavLine();
@@ -1769,8 +1881,8 @@ function animate() {
     clearNavRoute();
     missionRing.position.set(missions[0].startX, 0.22, missions[0].startZ);
     missionRing.material.color.setHex(0xfacc15);
-    document.getElementById('mission-title').innerText = "📌 目前任務：全台灣環島探索";
-    document.getElementById('mission-desc').innerText = "任務已完成！按 M 打開台灣衛星地圖（可滾輪放大）規劃下一段公路路線。";
+    document.getElementById('mission-title').innerText = "📌 目前任務：全台灣不規則公路探索";
+    document.getElementById('mission-desc').innerText = "任務已完成！按 M 打開台灣衛星地圖（可滾輪放大）規劃下一段彎道路線。";
     updateHUD();
   }
 
