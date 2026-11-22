@@ -2,816 +2,1225 @@
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
-<title>羅東 GTA 3D - 五星級極致版 (Luodong GTA 3D)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>宜蘭 GTA 3D：全境開放世界究極版</title>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; font-family: 'Microsoft JhengHei', sans-serif; }
-  body { overflow: hidden; background: #0a0e17; }
-  #game-canvas { display: block; width: 100vw; height: 100vh; }
+  * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; -webkit-user-select: none; font-family: 'Microsoft JhengHei', sans-serif; }
+  body { overflow: hidden; background: #0f172a; touch-action: none; }
+  canvas { display: block; }
 
-  /* 台北 GTA 風格右上角 HUD */
+  /* 開場主選單介面 */
+  #start-screen {
+    position: fixed; inset: 0; z-index: 1000;
+    background: linear-gradient(135deg, rgba(15,23,42,0.92), rgba(30,41,59,0.88)),
+                radial-gradient(circle at top right, #0284c7, transparent 50%);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    color: #fff; padding: 20px; text-align: center; backdrop-filter: blur(8px);
+  }
+  .game-logo {
+    font-size: clamp(28px, 6vw, 54px); font-weight: 900; letter-spacing: 3px;
+    background: linear-gradient(90deg, #38bdf8, #4ade80, #facc15);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    margin-bottom: 8px; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.6));
+  }
+  .game-sub { font-size: 16px; color: #cbd5e1; margin-bottom: 28px; }
+  .menu-card {
+    background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 18px; padding: 24px; width: 100%; max-width: 460px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.7);
+  }
+  .spawn-title { font-size: 16px; color: #94a3b8; margin-bottom: 12px; font-weight: bold; }
+  .spawn-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+  .spawn-btn {
+    padding: 16px 10px; border-radius: 12px; border: 2px solid #334155;
+    background: #1e293b; color: #fff; cursor: pointer; transition: 0.2s;
+  }
+  .spawn-btn.selected { border-color: #38bdf8; background: rgba(56, 189, 248, 0.2); box-shadow: 0 0 15px rgba(56,189,248,0.4); }
+  .spawn-btn h3 { font-size: 18px; margin-bottom: 4px; color: #f8fafc; }
+  .spawn-btn p { font-size: 12px; color: #94a3b8; }
+
+  .god-toggle {
+    display: flex; align-items: center; justify-content: space-between;
+    background: rgba(250, 204, 21, 0.12); border: 1px solid rgba(250, 204, 21, 0.4);
+    padding: 12px 16px; border-radius: 12px; margin-bottom: 20px; cursor: pointer;
+  }
+  .god-toggle span { font-size: 15px; font-weight: bold; color: #facc15; }
+  .god-toggle input { width: 20px; height: 20px; accent-color: #facc15; cursor: pointer; }
+
+  .start-btn {
+    width: 100%; padding: 16px; border: none; border-radius: 12px;
+    background: linear-gradient(90deg, #0284c7, #10b981); color: #fff;
+    font-size: 20px; font-weight: 900; cursor: pointer; letter-spacing: 2px;
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4); transition: 0.2s;
+  }
+  .start-btn:hover { transform: translateY(-2px); filter: brightness(1.1); }
+
+  /* 右上角 台北GTA風格 HUD */
   #top-right-hud {
-    position: absolute; top: 20px; right: 25px;
-    text-align: right; color: #fff; text-shadow: 2px 2px 6px rgba(0,0,0,0.9);
-    pointer-events: none;
+    position: fixed; top: 14px; right: 16px; text-align: right; color: #fff;
+    text-shadow: 1px 2px 5px rgba(0,0,0,0.9); pointer-events: none; z-index: 20;
   }
-  .time-weather { font-size: 18px; font-weight: bold; color: #e2e8f0; letter-spacing: 1px; }
-  .money { font-size: 32px; font-weight: 900; color: #4ade80; margin-top: 2px; }
-  .money span { font-size: 20px; color: #fff; margin-right: 4px; }
-  .stars { font-size: 26px; margin-top: 5px; letter-spacing: 4px; color: #64748b; }
-  .stars .active { color: #facc15; text-shadow: 0 0 12px #eab308; }
-  .weapon-box {
-    margin-top: 8px; display: inline-block;
-    background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(255,255,255,0.2);
-    padding: 5px 14px; border-radius: 6px; font-size: 15px; color: #38bdf8; font-weight: bold;
+  .time-weather { font-size: 15px; font-weight: bold; color: #f8fafc; }
+  .money { font-size: 26px; font-weight: 900; color: #facc15; margin-top: 2px; }
+  .stars { font-size: 22px; letter-spacing: 3px; color: rgba(255,255,255,0.3); }
+  .stars .active { color: #ef4444; text-shadow: 0 0 10px #ef4444; }
+  .weapon-badge {
+    display: inline-block; margin-top: 4px; padding: 4px 10px; border-radius: 6px;
+    background: rgba(15,23,42,0.75); border: 1px solid rgba(255,255,255,0.25);
+    font-size: 13px; color: #38bdf8; font-weight: bold;
   }
 
-  /* 台北 GTA 風格左下角圓形小地圖 */
-  #minimap-container {
-    position: absolute; bottom: 25px; left: 25px;
-    width: 190px; height: 190px; border-radius: 50%;
-    border: 4px solid rgba(255, 255, 255, 0.85);
-    box-shadow: 0 0 20px rgba(0, 0, 0, 0.9), inset 0 0 15px rgba(0,0,0,0.8);
-    overflow: hidden; background: #1e293b;
+  /* 左上角任務與快捷提示 */
+  #mission-hud {
+    position: fixed; top: 14px; left: 16px; z-index: 20;
+    background: rgba(15, 23, 42, 0.78); backdrop-filter: blur(6px);
+    padding: 10px 14px; border-radius: 10px; border-left: 4px solid #f59e0b;
+    color: #fff; font-size: 13px; max-width: 280px; pointer-events: none;
+  }
+  #mission-title { font-weight: 900; color: #facc15; font-size: 14px; margin-bottom: 3px; }
+  #mission-desc { color: #e2e8f0; line-height: 1.4; }
+  .pc-hint { margin-top: 6px; font-size: 11px; color: #94a3b8; }
+
+  /* 左下角圓形小地圖 + 血條 */
+  #minimap-wrap {
+    position: fixed; bottom: 18px; left: 18px; z-index: 20;
+    width: 150px; height: 150px; border-radius: 50%;
+    border: 3px solid rgba(255,255,255,0.85); overflow: hidden;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.8); background: #1e293b;
   }
   #minimap { width: 100%; height: 100%; }
-  #hp-bar-wrap {
-    position: absolute; bottom: 12px; left: 25px; width: 190px; height: 8px;
-    background: rgba(0,0,0,0.8); border-radius: 4px; overflow: hidden; border: 1px solid #334155;
+  #hp-wrap {
+    position: fixed; bottom: 8px; left: 18px; width: 150px; height: 7px; z-index: 20;
+    background: rgba(0,0,0,0.8); border-radius: 4px; overflow: hidden; border: 1px solid #475569;
   }
-  #hp-bar { width: 100%; height: 100%; background: linear-gradient(90deg, #ef4444, #22c55e); transition: width 0.2s; }
+  #hp-bar { width: 100%; height: 100%; background: #22c55e; transition: width 0.2s; }
 
-  /* 台北 GTA 風格動態互動提示 (按 F 搶機車) */
+  /* 中央互動提示 (按 F 搶廂型車 / 進入超商) */
   #interact-prompt {
-    position: absolute; bottom: 28%; left: 50%; transform: translateX(-50%);
-    background: rgba(0, 0, 0, 0.82); color: #fff;
-    padding: 8px 18px; border-radius: 6px; font-size: 16px; font-weight: bold;
-    border: 1px solid rgba(255,255,255,0.25); display: none; align-items: center; gap: 8px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+    position: fixed; bottom: 26%; left: 50%; transform: translateX(-50%); z-index: 30;
+    background: rgba(0,0,0,0.85); color: #fff; padding: 8px 16px; border-radius: 8px;
+    font-size: 15px; font-weight: bold; border: 1px solid rgba(255,255,255,0.3);
+    display: none; align-items: center; gap: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.6);
   }
-  .key-badge {
-    background: #fff; color: #000; padding: 2px 8px; border-radius: 4px; font-weight: 900;
+  .key-cap { background: #fff; color: #000; padding: 2px 7px; border-radius: 4px; font-weight: 900; }
+
+  /* 全宜蘭大地圖介面 (按 M 開啟) */
+  #big-map-modal {
+    position: fixed; inset: 0; z-index: 200; background: rgba(10, 15, 28, 0.94);
+    display: none; flex-direction: column; align-items: center; justify-content: center; padding: 16px;
+  }
+  #big-map-header {
+    width: 100%; max-width: 820px; display: flex; justify-content: space-between; align-items: center;
+    color: #fff; margin-bottom: 10px;
+  }
+  #big-map-canvas {
+    width: 100%; max-width: 820px; height: 72vh; background: #162032;
+    border: 2px solid #38bdf8; border-radius: 12px; cursor: crosshair;
   }
 
-  /* 路人 3D 投影對話氣泡 */
+  /* 智慧手機與超商購物選單 */
+  #side-panel {
+    position: fixed; right: 16px; bottom: 90px; width: 270px; z-index: 150;
+    background: rgba(15, 23, 42, 0.95); border: 2px solid #38bdf8; border-radius: 20px;
+    padding: 16px; color: #fff; display: none; box-shadow: 0 10px 30px rgba(0,0,0,0.85);
+  }
+  .panel-title { font-size: 17px; font-weight: 900; color: #38bdf8; margin-bottom: 10px; text-align: center; border-bottom: 1px solid #334155; padding-bottom: 6px; }
+  .panel-btn {
+    width: 100%; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.18);
+    color: #fff; padding: 10px; border-radius: 10px; margin-bottom: 8px; text-align: left; cursor: pointer; font-size: 13px;
+  }
+  .panel-btn:hover { background: rgba(56, 189, 248, 0.25); }
+  .panel-btn small { display: block; color: #94a3b8; font-size: 11px; margin-top: 2px; }
+
+  /* 手機觸控虛擬搖桿與按鍵 */
+  #mobile-controls { display: none; position: fixed; inset: 0; pointer-events: none; z-index: 50; }
+  #joystick-zone {
+    position: absolute; bottom: 175px; left: 24px; width: 120px; height: 120px;
+    border-radius: 50%; background: rgba(255,255,255,0.12); border: 2px solid rgba(255,255,255,0.3);
+    pointer-events: auto;
+  }
+  #joystick-knob {
+    position: absolute; top: 35px; left: 35px; width: 50px; height: 50px;
+    border-radius: 50%; background: rgba(56, 189, 248, 0.75); box-shadow: 0 0 12px #38bdf8;
+  }
+  .touch-btns {
+    position: absolute; bottom: 24px; right: 20px; display: grid;
+    grid-template-columns: repeat(2, 62px); gap: 10px; pointer-events: auto;
+  }
+  .t-btn {
+    width: 62px; height: 62px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.45);
+    background: rgba(15, 23, 42, 0.72); color: #fff; font-weight: bold; font-size: 13px;
+    display: flex; align-items: center; justify-content: center; text-align: center;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+  }
+  .t-btn:active { background: #38bdf8; color: #000; }
+  .t-btn.atk { background: rgba(239, 68, 68, 0.75); border-color: #fca5a5; grid-column: span 2; width: 134px; border-radius: 30px; height: 52px; font-size: 16px; }
+
   .speech-bubble {
-    position: absolute; background: #fff; color: #111; font-weight: bold; font-size: 14px;
-    padding: 5px 12px; border-radius: 12px; box-shadow: 0 3px 10px rgba(0,0,0,0.5);
-    pointer-events: none; transform: translate(-50%, -100%); white-space: nowrap;
-  }
-  .speech-bubble::after {
-    content: ''; position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%);
-    border-width: 6px 6px 0; border-style: solid; border-color: #fff transparent transparent;
-  }
-
-  /* 左上角操作與狀態提示 */
-  #controls-guide {
-    position: absolute; top: 20px; left: 25px;
-    background: rgba(15, 23, 42, 0.72); backdrop-filter: blur(6px);
-    padding: 12px 16px; border-radius: 10px; border-left: 4px solid #f59e0b;
-    color: #f8fafc; font-size: 14px; line-height: 1.6; pointer-events: none;
-  }
-  #controls-guide b { color: #facc15; }
-
-  /* 智慧型手機 UI (按 T 開啟) */
-  #phone-ui {
-    position: absolute; bottom: 25px; right: 25px; width: 280px; height: 470px;
-    background: linear-gradient(160deg, #1e293b, #0f172a);
-    border: 4px solid #475569; border-radius: 28px; padding: 20px;
-    color: #fff; display: none; flex-direction: column; justify-content: space-between;
-    box-shadow: 0 15px 35px rgba(0,0,0,0.85);
-  }
-  .phone-header { text-align: center; font-size: 18px; font-weight: bold; border-bottom: 1px solid #334155; padding-bottom: 10px; color: #38bdf8; }
-  .phone-btn {
-    background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15);
-    padding: 12px; border-radius: 12px; margin: 8px 0; cursor: pointer; text-align: left;
-    transition: 0.2s; color: #fff; font-size: 14px;
-  }
-  .phone-btn:hover { background: rgba(56, 189, 248, 0.25); border-color: #38bdf8; }
-  .phone-btn span { display: block; font-size: 12px; color: #94a3b8; margin-top: 3px; }
-
-  /* 準心 */
-  #crosshair {
-    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-    width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.7); border-radius: 50%;
-    pointer-events: none;
-  }
-  /* 警匪追逐紅藍閃光邊框 */
-  #siren-overlay {
-    position: absolute; inset: 0; pointer-events: none;
-    box-shadow: inset 0 0 60px rgba(239, 68, 68, 0); transition: box-shadow 0.15s;
+    position: fixed; background: #fff; color: #111; font-weight: bold; font-size: 12px;
+    padding: 4px 10px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    pointer-events: none; transform: translate(-50%, -100%); white-space: nowrap; z-index: 15;
   }
 </style>
-<!-- 載入 Three.js 3D 引擎 -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
 
-<div id="siren-overlay"></div>
-<div id="crosshair"></div>
+<!-- 開場選擇介面 -->
+<div id="start-screen">
+  <div class="game-logo">宜蘭 GTA 3D：全境開放世界</div>
+  <div class="game-sub">支援電腦鍵鼠 & 手機觸控 • 宜蘭市至羅東鎮完整地圖</div>
+  <div class="menu-card">
+    <div class="spawn-title">📍 請選擇出生城市起點：</div>
+    <div class="spawn-btns">
+      <div class="spawn-btn selected" id="btn-luodong" onclick="selectCity('luodong')">
+        <h3>🏮 羅東鎮</h3>
+        <p>羅東夜市、羅東車站、林場</p>
+      </div>
+      <div class="spawn-btn" id="btn-yilan" onclick="selectCity('yilan')">
+        <h3>🏛️ 宜蘭市</h3>
+        <p>幾米廣場、東門夜市、新月</p>
+      </div>
+    </div>
 
-<!-- 左上角操作說明 -->
-<div id="controls-guide">
-  <div style="font-size:17px; font-weight:900; color:#38bdf8; margin-bottom:4px;">🇹🇼 羅東 GTA 3D：五星極致版</div>
-  <b>WASD</b>：移動 / 駕駛機車與超跑<br>
-  <b>滑鼠移動 / 左右鍵</b>：轉動視角 / 開火射擊<br>
-  <b>F 鍵</b>：搶機車 / 上下車 &nbsp;|&nbsp; <b>Tab</b>：切換武器<br>
-  <b>T 鍵</b>：開啟羅東智慧手機 (消星/叫車/補血)
+    <label class="god-toggle">
+      <span>⚡ 無敵神模式 (不死 / 無限子彈 / 無限金錢)</span>
+      <input type="checkbox" id="god-mode-check">
+    </label>
+
+    <button class="start-btn" onclick="startGame()">進入宜蘭開放世界</button>
+  </div>
 </div>
 
-<!-- 右上角台北 GTA 經典 HUD -->
+<!-- 左上角任務欄 -->
+<div id="mission-hud">
+  <div id="mission-title">📌 目前任務：自由探索宜蘭</div>
+  <div id="mission-desc">前往地圖上的黃色光圈接取任務，或走進 7-TWELVE 超商購物！</div>
+  <div class="pc-hint">WASD移動 | F搶車/進超商 | M大地圖 | T手機 | Tab換武器</div>
+</div>
+
+<!-- 右上角 HUD -->
 <div id="top-right-hud">
-  <div class="time-weather">🌙 20:50 &nbsp; 28°C &nbsp; 宜蘭羅東</div>
-  <div class="money"><span>NT$</span><span id="money-val" style="color:#4ade80; font-size:32px;">16,478</span></div>
-  <div class="stars" id="wanted-stars">
-    <span>★</span><span>★</span><span>★</span><span>★</span><span>★</span>
+  <div class="time-weather" id="weather-hud">☀️ 14:24 &nbsp; 32°C &nbsp; 羅東鎮</div>
+  <div class="money">NT$ <span id="money-val">1,500</span></div>
+  <div class="stars" id="stars-hud"><span>★</span><span>★</span><span>★</span><span>★</span><span>★</span></div>
+  <div class="weapon-badge" id="weapon-hud">武器：空手 (拳頭)</div>
+</div>
+
+<!-- 互動提示 -->
+<div id="interact-prompt">按 <span class="key-cap">F</span> <span id="interact-label">搶廂型車</span></div>
+
+<!-- 小地圖與血條 -->
+<div id="minimap-wrap"><canvas id="minimap" width="150" height="150"></canvas></div>
+<div id="hp-wrap"><div id="hp-bar"></div></div>
+
+<!-- 全宜蘭大地圖 (按 M 開啟) -->
+<div id="big-map-modal">
+  <div id="big-map-header">
+    <h2>🗺️ 宜蘭縣全境衛星導航地圖 (點擊地圖任意處可設定導航點)</h2>
+    <button onclick="toggleBigMap()" style="padding:6px 14px; background:#ef4444; color:#fff; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">關閉 (M)</button>
   </div>
-  <div class="weapon-box" id="weapon-val">武器：9mm 制式手槍</div>
+  <canvas id="big-map-canvas" width="820" height="580"></canvas>
 </div>
 
-<!-- 動態互動提示 -->
-<div id="interact-prompt">
-  按 <span class="key-badge">F</span> <span id="interact-text">搶機車</span>
-</div>
+<!-- 手機與超商共用面板 -->
+<div id="side-panel"></div>
 
-<!-- 左下角圓形雷達小地圖 + 血條 -->
-<div id="minimap-container">
-  <canvas id="minimap" width="190" height="190"></canvas>
-</div>
-<div id="hp-bar-wrap"><div id="hp-bar"></div></div>
-
-<!-- 智慧手機介面 -->
-<div id="phone-ui">
-  <div>
-    <div class="phone-header">📱 羅東智慧通 OS</div>
-    <div class="phone-btn" onclick="buyHeal()">
-      🍡 訂購魏姐包心粉圓 (+50 HP)
-      <span>花費 NT$ 200 立即恢復體力</span>
-    </div>
-    <div class="phone-btn" onclick="clearWanted()">
-      📞 聯繫羅東分局長 (消除通緝)
-      <span>花費 NT$ 1,000 清除所有通緝星數</span>
-    </div>
-    <div class="phone-btn" onclick="spawnSupercar()">
-      🏎️ 呼叫改裝廠空投超跑
-      <span>花費 NT$ 2,500 立即空投至身旁</span>
-    </div>
-    <div class="phone-btn" onclick="addFiveStars()">
-      🚨 挑釁全宜蘭警力 (直接五星通緝)
-      <span>體驗裝甲特警與直昇機級別圍捕</span>
-    </div>
+<!-- 手機版虛擬觸控 -->
+<div id="mobile-controls">
+  <div id="joystick-zone"><div id="joystick-knob"></div></div>
+  <div class="touch-btns">
+    <div class="t-btn" onclick="toggleBigMap()">🗺️<br>地圖</div>
+    <div class="t-btn" onclick="openPhone()">📱<br>手機</div>
+    <div class="t-btn" onclick="cycleWeapon()">🔫<br>武器</div>
+    <div class="t-btn" onclick="handleInteract()">🚗<br>互動</div>
+    <div class="t-btn atk" ontouchstart="doAttack()" onclick="doAttack()">👊 攻擊 / 開火</div>
   </div>
-  <div style="text-align:center; font-size:12px; color:#64748b;">按 T 或 ESC 關閉手機</div>
 </div>
 
 <div id="bubbles-layer"></div>
 
 <script>
 // =========================================================
-// 1. 初始化 Three.js 3D 場景、攝影機與夜景光影
+// 1. 遊戲全域狀態與開場選單邏輯
+// =========================================================
+let selectedCity = 'luodong';
+let isGodMode = false;
+let gameStarted = false;
+
+function selectCity(city) {
+  selectedCity = city;
+  document.getElementById('btn-luodong').classList.toggle('selected', city === 'luodong');
+  document.getElementById('btn-yilan').classList.toggle('selected', city === 'yilan');
+}
+
+// =========================================================
+// 2. Three.js 3D 場景與日間寫實光影 (比照台北 GTA 截圖)
 // =========================================================
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0b1120);
-scene.fog = new THREE.FogExp2(0x0b1120, 0.0045);
+scene.background = new THREE.Color(0x93c5fd);
+scene.fog = new THREE.FogExp2(0xbae6fd, 0.0022);
 
-const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 600);
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 800);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 document.body.appendChild(renderer.domElement);
 
-// 環境光與月光
-const ambientLight = new THREE.AmbientLight(0x405070, 1.1);
-scene.add(ambientLight);
-const dirLight = new THREE.DirectionalLight(0xaaccff, 0.9);
-dirLight.position.set(80, 150, 60);
-dirLight.castShadow = true;
-scene.add(dirLight);
+const hemiLight = new THREE.HemisphereLight(0xffffff, 0x334155, 1.05);
+scene.add(hemiLight);
+const sunLight = new THREE.DirectionalLight(0xfffbeb, 1.1);
+sunLight.position.set(150, 260, 120);
+sunLight.castShadow = true;
+scene.add(sunLight);
 
 // =========================================================
-// 2. 打造 3D 羅東街景 (雙向柏油路、紅線、斑馬線、機車停等區)
+// 3. 全宜蘭開放世界地理架構 (宜蘭市 Z=-260 ◀▶ 蘭陽溪 Z=0 ◀▶ 羅東鎮 Z=+260)
 // =========================================================
-const MAP_SIZE = 400;
-// 基礎人行道與地面
-const groundGeo = new THREE.PlaneGeometry(MAP_SIZE, MAP_SIZE);
-const groundMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.9 });
-const ground = new THREE.Mesh(groundGeo, groundMat);
+const WORLD_W = 600;
+const WORLD_D = 900;
+
+// 宜蘭平原綠地基底
+const ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(WORLD_W, WORLD_D),
+  new THREE.MeshStandardMaterial({ color: 0x3f6212, roughness: 0.9 })
+);
 ground.rotation.x = -Math.PI / 2;
 ground.receiveShadow = true;
 scene.add(ground);
 
-// 十字主幹道 (公正路 & 中正路)
-function createRoad(w, d, x, z) {
+// 東側太平洋海域
+const ocean = new THREE.Mesh(
+  new THREE.PlaneGeometry(250, WORLD_D),
+  new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.3 })
+);
+ocean.rotation.x = -Math.PI / 2;
+ocean.position.set(320, 0.05, 0);
+scene.add(ocean);
+
+// 蘭陽溪河道 (分隔宜蘭市與羅東鎮)
+const river = new THREE.Mesh(
+  new THREE.PlaneGeometry(WORLD_W, 46),
+  new THREE.MeshStandardMaterial({ color: 0x0369a1, roughness: 0.3 })
+);
+river.rotation.x = -Math.PI / 2;
+river.position.set(0, 0.06, 0);
+scene.add(river);
+
+// 道路網建構器 (含中央分隔島綠帶與行道樹，還原截圖)
+const roads = [];
+function buildRoad(x, z, w, d, hasMedian = false) {
   const road = new THREE.Mesh(
     new THREE.PlaneGeometry(w, d),
-    new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.8 })
+    new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.85 })
   );
   road.rotation.x = -Math.PI / 2;
-  road.position.set(x, 0.02, z);
+  road.position.set(x, 0.08, z);
   scene.add(road);
-}
-createRoad(28, MAP_SIZE, 0, 0);   // 南北向中正路
-createRoad(MAP_SIZE, 28, 0, 0);   // 東西向公正路
-createRoad(22, MAP_SIZE, -110, 0);
-createRoad(22, MAP_SIZE, 110, 0);
-createRoad(MAP_SIZE, 22, 0, -110);
-createRoad(MAP_SIZE, 22, 0, 110);
+  roads.push({ x, z, w, d });
 
-// 台灣特色道路標線：雙黃線、路邊禁止停車紅線、斑馬線、機車停等區
-function addMarkings() {
-  const yellowMat = new THREE.MeshBasicMaterial({ color: 0xfacc15 });
-  const redMat = new THREE.MeshBasicMaterial({ color: 0xef4444 });
-  const whiteMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-
-  // 雙黃線與紅線 (南北向)
-  for (let z = -190; z <= 190; z += 10) {
-    if (Math.abs(z) < 18) continue;
-    const yl1 = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 6), yellowMat);
-    yl1.rotation.x = -Math.PI / 2; yl1.position.set(-0.3, 0.04, z); scene.add(yl1);
-    const yl2 = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 6), yellowMat);
-    yl2.rotation.x = -Math.PI / 2; yl2.position.set(0.3, 0.04, z); scene.add(yl2);
+  // 白色車道虛線
+  const lineMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  if (d > w) {
+    for (let lz = z - d/2 + 8; lz < z + d/2 - 8; lz += 14) {
+      const dash = new THREE.Mesh(new THREE.PlaneGeometry(0.35, 5), lineMat);
+      dash.rotation.x = -Math.PI / 2; dash.position.set(x - w/4, 0.1, lz); scene.add(dash);
+      const dash2 = new THREE.Mesh(new THREE.PlaneGeometry(0.35, 5), lineMat);
+      dash2.rotation.x = -Math.PI / 2; dash2.position.set(x + w/4, 0.1, lz); scene.add(dash2);
+    }
+    if (hasMedian) {
+      const median = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.35, d), new THREE.MeshStandardMaterial({ color: 0x15803d }));
+      median.position.set(x, 0.18, z); scene.add(median);
+    }
+  } else {
+    for (let lx = x - w/2 + 8; lx < x + w/2 - 8; lx += 14) {
+      const dash = new THREE.Mesh(new THREE.PlaneGeometry(5, 0.35), lineMat);
+      dash.rotation.x = -Math.PI / 2; dash.position.set(lx, 0.1, z); scene.add(dash);
+    }
   }
-  // 路邊紅線
-  [-13.5, 13.5].forEach(xPos => {
-    const rLine = new THREE.Mesh(new THREE.PlaneGeometry(0.4, MAP_SIZE), redMat);
-    rLine.rotation.x = -Math.PI / 2; rLine.position.set(xPos, 0.04, 0); scene.add(rLine);
-  });
-  [-13.5, 13.5].forEach(zPos => {
-    const rLine = new THREE.Mesh(new THREE.PlaneGeometry(MAP_SIZE, 0.4), redMat);
-    rLine.rotation.x = -Math.PI / 2; rLine.position.set(0, 0.04, zPos); scene.add(rLine);
-  });
-
-  // 路口斑馬線 & 機車停等區
-  for (let i = -11; i <= 11; i += 2.5) {
-    const zb1 = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 4), whiteMat);
-    zb1.rotation.x = -Math.PI / 2; zb1.position.set(i, 0.05, 16); scene.add(zb1);
-    const zb2 = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 4), whiteMat);
-    zb2.rotation.x = -Math.PI / 2; zb2.position.set(i, 0.05, -16); scene.add(zb2);
-    const zb3 = new THREE.Mesh(new THREE.PlaneGeometry(4, 1.2), whiteMat);
-    zb3.rotation.x = -Math.PI / 2; zb3.position.set(16, 0.05, i); scene.add(zb3);
-    const zb4 = new THREE.Mesh(new THREE.PlaneGeometry(4, 1.2), whiteMat);
-    zb4.rotation.x = -Math.PI / 2; zb4.position.set(-16, 0.05, i); scene.add(zb4);
-  }
-  // 機車停等區白框
-  const boxFrame = new THREE.Mesh(new THREE.PlaneGeometry(11, 5), new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true }));
-  boxFrame.rotation.x = -Math.PI / 2; boxFrame.position.set(6.5, 0.05, 22); scene.add(boxFrame);
 }
-addMarkings();
 
-// 製作發光招牌貼圖工具
-function makeSignTexture(bg, text, subText = "") {
-  const c = document.createElement('canvas');
-  c.width = 512; c.height = 160;
+// 台九線省道 (貫穿宜蘭市 - 蘭陽大橋 - 羅東鎮)
+buildRoad(0, 0, 28, 760, true);
+// 國道五號側車道 (東側)
+buildRoad(120, 0, 22, 740, false);
+// 羅東鎮區路網 (Z = +180 ~ +340)
+buildRoad(0, 240, 320, 24, false);
+buildRoad(0, 320, 320, 22, false);
+buildRoad(-90, 260, 20, 200, false);
+// 宜蘭市區路網 (Z = -180 ~ -340)
+buildRoad(0, -240, 320, 24, false);
+buildRoad(0, -320, 320, 22, false);
+buildRoad(-90, -260, 20, 200, false);
+
+// 蘭陽大橋橋面護欄
+const bridgeDeck = new THREE.Mesh(new THREE.BoxGeometry(30, 0.6, 52), new THREE.MeshStandardMaterial({ color: 0x475569 }));
+bridgeDeck.position.set(0, 0.3, 0);
+scene.add(bridgeDeck);
+
+// 行道樹裝飾
+function spawnTree(x, z) {
+  const g = new THREE.Group();
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 3), new THREE.MeshStandardMaterial({ color: 0x78350f }));
+  trunk.position.y = 1.5; g.add(trunk);
+  const crown = new THREE.Mesh(new THREE.SphereGeometry(2.2, 8, 8), new THREE.MeshStandardMaterial({ color: 0x16a34a }));
+  crown.position.y = 4.2; g.add(crown);
+  g.position.set(x, 0, z);
+  scene.add(g);
+}
+for (let tz = -340; tz <= 340; tz += 26) {
+  if (Math.abs(tz) < 30) continue;
+  spawnTree(-16.5, tz);
+  spawnTree(16.5, tz);
+}
+
+// =========================================================
+// 4. 實體碰撞箱 (防止穿牆)、民宅群、以及「可進入的 7-TWELVE 超商」
+// =========================================================
+const colliders = []; // { minX, maxX, minZ, maxZ }
+const landmarks = []; // 供大地圖繪製標示
+const enterableStores = []; // 可走進去的超商
+
+function makeSignTex(bg, title, sub = "") {
+  const c = document.createElement('canvas'); c.width = 512; c.height = 140;
   const ctx = c.getContext('2d');
-  ctx.fillStyle = bg; ctx.fillRect(0, 0, 512, 160);
-  ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 8; ctx.strokeRect(6, 6, 500, 148);
-  ctx.fillStyle = "#ffffff"; ctx.font = "bold 56px Microsoft JhengHei"; ctx.textAlign = "center";
-  ctx.fillText(text, 256, subText ? 82 : 100);
-  if (subText) {
-    ctx.fillStyle = "#fde047"; ctx.font = "bold 28px Microsoft JhengHei";
-    ctx.fillText(subText, 256, 132);
-  }
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, 512, 140);
+  ctx.strokeStyle = "#fff"; ctx.lineWidth = 6; ctx.strokeRect(5, 5, 502, 130);
+  ctx.fillStyle = "#fff"; ctx.font = "bold 50px Microsoft JhengHei"; ctx.textAlign = "center";
+  ctx.fillText(title, 256, sub ? 72 : 90);
+  if (sub) { ctx.fillStyle = "#fde047"; ctx.font = "bold 26px Microsoft JhengHei"; ctx.fillText(sub, 256, 118); }
   return new THREE.CanvasTexture(c);
 }
 
-// 建造 3D 羅東地標建築群 (羅東夜市、7-TWELVE超商、羅東車站、運動公園)
-const buildings = [];
-function createBuilding(x, z, w, h, d, color, signText, signBg, subText = "") {
-  const group = new THREE.Group();
-  const mesh = new THREE.Mesh(
+// 建造一般實體建築 / 民宅 (含碰撞箱防穿牆)
+function createSolidBuilding(x, z, w, h, d, color, label = "", signBg = "#1e293b", isHouse = false) {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(
     new THREE.BoxGeometry(w, h, d),
-    new THREE.MeshStandardMaterial({ color: color, roughness: 0.6 })
+    new THREE.MeshStandardMaterial({ color, roughness: 0.7 })
   );
-  mesh.position.y = h / 2;
-  mesh.castShadow = true; mesh.receiveShadow = true;
-  group.add(mesh);
+  body.position.y = h / 2;
+  body.castShadow = true; body.receiveShadow = true;
+  g.add(body);
 
-  // 建築發光窗戶裝飾
-  const winMat = new THREE.MeshBasicMaterial({ color: 0xfef08a });
-  for (let wy = 4; wy < h - 3; wy += 4) {
-    const win = new THREE.Mesh(new THREE.PlaneGeometry(w * 0.85, 1.2), winMat);
-    win.position.set(0, wy, d / 2 + 0.05);
-    group.add(win);
-  }
-
-  // 招牌
-  if (signText) {
-    const signTex = makeSignTexture(signBg, signText, subText);
-    const sign = new THREE.Mesh(
-      new THREE.PlaneGeometry(w * 0.9, 4.5),
-      new THREE.MeshBasicMaterial({ map: signTex })
+  // 民宅斜屋頂與陽台細節
+  if (isHouse) {
+    const roof = new THREE.Mesh(
+      new THREE.ConeGeometry(Math.max(w, d) * 0.72, 3.2, 4),
+      new THREE.MeshStandardMaterial({ color: 0x991b1b })
     );
-    sign.position.set(0, Math.min(h - 2, 11), d / 2 + 0.15);
-    group.add(sign);
+    roof.position.y = h + 1.6; roof.rotation.y = Math.PI / 4;
+    g.add(roof);
   }
 
-  group.position.set(x, 0, z);
-  scene.add(group);
-  buildings.push({ x, z, w, d });
+  // 窗戶玻璃
+  const winMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, metalness: 0.5, roughness: 0.2 });
+  for (let wy = 3; wy < h - 1.5; wy += 3.5) {
+    const win = new THREE.Mesh(new THREE.PlaneGeometry(w * 0.75, 1.4), winMat);
+    win.position.set(0, wy, d / 2 + 0.05);
+    g.add(win);
+  }
+
+  if (label) {
+    const sign = new THREE.Mesh(
+      new THREE.PlaneGeometry(Math.min(w * 0.95, 22), 4),
+      new THREE.MeshBasicMaterial({ map: makeSignTex(signBg, label) })
+    );
+    sign.position.set(0, Math.min(h - 1.5, 9), d / 2 + 0.12);
+    g.add(sign);
+    landmarks.push({ x, z, name: label, color: signBg });
+  }
+
+  g.position.set(x, 0, z);
+  scene.add(g);
+
+  // 註冊防穿牆碰撞盒
+  colliders.push({
+    minX: x - w / 2 - 0.6, maxX: x + w / 2 + 0.6,
+    minZ: z - d / 2 - 0.6, maxZ: z + d / 2 + 0.6
+  });
 }
 
-// 街角 7-TWELVE 超商 (還原截圖右上角建築)
-createBuilding(34, -34, 26, 16, 26, 0xe2e8f0, "7-TWELVE", "#008060", "羅東公正門市 • 24H營業");
-// 羅東夜市觀光牌樓與美食街
-createBuilding(-42, -38, 36, 22, 30, 0x991b1b, "羅東觀光夜市", "#b91c1c", "阿灶伯羊肉湯 • 包心粉圓");
-// 羅東火車站 / 轉運站
-createBuilding(45, 42, 42, 26, 32, 0x1e40af, "臺鐵 羅東車站", "#1d4ed8", "LUODONG STATION");
-// 羅東運動公園綠地與涼亭
-const parkMesh = new THREE.Mesh(
-  new THREE.BoxGeometry(45, 0.4, 45),
-  new THREE.MeshStandardMaterial({ color: 0x15803d })
-);
-parkMesh.position.set(-45, 0.2, 45);
-scene.add(parkMesh);
-createBuilding(-45, 45, 14, 9, 14, 0x78350f, "羅東運動公園", "#166534", "落羽松秘境");
+// 建造「可進入內部」的 7-TWELVE 超商 (左右後三面牆有碰撞，正面大門敞開可走入)
+function createEnterableConvenienceStore(x, z, branchName) {
+  const w = 18, h = 8, d = 16;
+  const g = new THREE.Group();
+  const wallMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc });
 
-// 外圍都市高樓群
-const cityCoords = [
-  [-45, -90], [45, -90], [-90, -45], [90, -45],
-  [-90, 45], [90, 45], [-45, 90], [45, 90]
+  // 地板
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshStandardMaterial({ color: 0xe2e8f0 }));
+  floor.rotation.x = -Math.PI / 2; floor.position.y = 0.12; g.add(floor);
+
+  // 屋頂與經典橘綠紅招牌
+  const roof = new THREE.Mesh(new THREE.BoxGeometry(w + 1, 1.2, d + 1), wallMat);
+  roof.position.y = h; g.add(roof);
+  const sign = new THREE.Mesh(
+    new THREE.PlaneGeometry(w, 3),
+    new THREE.MeshBasicMaterial({ map: makeSignTex("#008060", "7-TWELVE", branchName) })
+  );
+  sign.position.set(0, h + 1.5, d / 2 + 0.2); g.add(sign);
+
+  // 左牆、右牆、後牆 (三面實體牆有碰撞，正面開放進入)
+  const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.8, h, d), wallMat);
+  leftWall.position.set(-w/2, h/2, 0); g.add(leftWall);
+  const rightWall = new THREE.Mesh(new THREE.BoxGeometry(0.8, h, d), wallMat);
+  rightWall.position.set(w/2, h/2, 0); g.add(rightWall);
+  const backWall = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.8), wallMat);
+  backWall.position.set(0, h/2, -d/2); g.add(backWall);
+
+  // 內部結帳櫃檯與商品貨架
+  const counter = new THREE.Mesh(new THREE.BoxGeometry(6, 1.3, 1.6), new THREE.MeshStandardMaterial({ color: 0xea580c }));
+  counter.position.set(0, 0.75, -d/2 + 3.2); g.add(counter);
+
+  const clerk = createCharacterMesh(0x16a34a, 0x1e293b, false);
+  clerk.position.set(0, 0.1, -d/2 + 1.8); g.add(clerk);
+
+  // 貨架
+  [-4.5, 4.5].forEach(sx => {
+    const shelf = new THREE.Mesh(new THREE.BoxGeometry(1.5, 2.6, 6), new THREE.MeshStandardMaterial({ color: 0x3b82f6 }));
+    shelf.position.set(sx, 1.4, 0); g.add(shelf);
+  });
+
+  g.position.set(x, 0, z);
+  scene.add(g);
+
+  // 僅針對左、右、後牆加入碰撞，讓正面門口暢通無阻
+  colliders.push({ minX: x - w/2 - 0.8, maxX: x - w/2 + 0.8, minZ: z - d/2, maxZ: z + d/2 });
+  colliders.push({ minX: x + w/2 - 0.8, maxX: x + w/2 + 0.8, minZ: z - d/2, maxZ: z + d/2 });
+  colliders.push({ minX: x - w/2, maxX: x + w/2, minZ: z - d/2 - 0.8, maxZ: z - d/2 + 0.8 });
+
+  landmarks.push({ x, z, name: "7-TWELVE " + branchName, color: "#008060" });
+  enterableStores.push({ x, z, counterX: x, counterZ: z - d/2 + 4.5, name: branchName });
+}
+
+// 羅東鎮地標與民宅
+createSolidBuilding(-38, 210, 32, 18, 28, 0x991b1b, "羅東觀光夜市", "#b91c1c");
+createSolidBuilding(42, 210, 36, 22, 28, 0x1e40af, "臺鐵 羅東車站", "#1d4ed8");
+createEnterableConvenienceStore(-35, 265, "羅東公正店");
+
+// 宜蘭市地標與民宅
+createSolidBuilding(-38, -210, 32, 18, 28, 0xb45309, "宜蘭東門夜市", "#d97706");
+createSolidBuilding(42, -210, 36, 20, 28, 0x0f766e, "幾米廣場 / 宜蘭站", "#0d9488");
+createEnterableConvenienceStore(-35, -265, "宜蘭神農店");
+
+// 大量宜蘭在地透天厝民宅群 (遍布羅東與宜蘭市周邊)
+const houseCoords = [
+  [-65, 210], [-65, 235], [-65, 295], [40, 270], [65, 270], [40, 295],
+  [-65, -210], [-65, -235], [-65, -295], [40, -270], [65, -270], [40, -295],
+  [-45, 110], [45, 110], [-45, -110], [45, -110], [80, 180], [80, -180]
 ];
-cityCoords.forEach(([cx, cz], idx) => {
-  createBuilding(cx, cz, 28, 28 + (idx % 3) * 12, 28, 0x334155, idx % 2 === 0 ? "喜互惠生鮮超市" : "宜蘭銀行大樓", "#0f172a");
+houseCoords.forEach(([hx, hz], idx) => {
+  const colors = [0xe2e8f0, 0xfde68a, 0xfed7aa, 0xcbd5e1];
+  createSolidBuilding(hx, hz, 16, 11 + (idx % 2) * 3.5, 15, colors[idx % colors.length], "", "", true);
 });
 
 // =========================================================
-// 3. 3D 玩家角色、機車、計程車與警車模型建構器
+// 5. 精緻 3D 人物與多車種載具建模 (廂型車、小黃、勁戰、警車、跑車)
 // =========================================================
-function createHumanMesh(shirtColor, pantsColor, hasHelmet = false) {
+function createCharacterMesh(shirtCol, pantsCol, helmet = false) {
   const g = new THREE.Group();
-  const body = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.3, 0.5), new THREE.MeshStandardMaterial({ color: shirtColor }));
-  body.position.y = 1.45; g.add(body);
-  const legs = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.9, 0.45), new THREE.MeshStandardMaterial({ color: pantsColor }));
-  legs.position.y = 0.45; g.add(legs);
+  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.85, 1.25, 0.45), new THREE.MeshStandardMaterial({ color: shirtCol }));
+  torso.position.y = 1.45; g.add(torso);
+  const legL = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.9, 0.4), new THREE.MeshStandardMaterial({ color: pantsCol }));
+  legL.position.set(-0.22, 0.45, 0); g.add(legL);
+  const legR = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.9, 0.4), new THREE.MeshStandardMaterial({ color: pantsCol }));
+  legR.position.set(0.22, 0.45, 0); g.add(legR);
   const head = new THREE.Mesh(
-    new THREE.SphereGeometry(0.35, 12, 12),
-    new THREE.MeshStandardMaterial({ color: hasHelmet ? 0xf472b6 : 0xfcd34d })
+    new THREE.SphereGeometry(0.34, 14, 14),
+    new THREE.MeshStandardMaterial({ color: helmet ? 0xef4444 : 0xfcd34d })
   );
-  head.position.y = 2.4; g.add(head);
+  head.position.y = 2.38; g.add(head);
   return g;
 }
 
-const playerMesh = createHumanMesh(0x166534, 0x1e293b, false); // 綠色外套主角 (還原截圖背影)
+const playerMesh = createCharacterMesh(0x166534, 0x1e293b, false);
 scene.add(playerMesh);
 
-const playerState = {
-  x: -8, z: 18, rotY: Math.PI, speed: 0.28,
-  hp: 100, money: 16478, wanted: 0,
-  weapons: ["9mm 制式手槍", "烏茲衝鋒槍", "黃金 AK-47 步槍"],
+const player = {
+  x: -10, z: 245, rotY: 0, speed: 0.32,
+  hp: 100, money: 1500, wanted: 0,
+  weapons: [
+    { name: "空手 (拳頭)", owned: true, ammo: Infinity, dmg: 20, range: 3.5 },
+    { name: "夜市球棒", owned: false, ammo: Infinity, dmg: 45, range: 4.5 },
+    { name: "9mm 制式手槍", owned: false, ammo: 36, dmg: 60, range: 55 },
+    { name: "衝鋒槍", owned: false, ammo: 90, dmg: 40, range: 65 }
+  ],
   weaponIdx: 0,
-  inVehicle: null
+  inVehicle: null,
+  waypoint: null
 };
 
-// 載具列表 (機車、小黃計程車、警車)
 const vehicles = [];
+function createWheel(x, z) {
+  const w = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.3, 14), new THREE.MeshStandardMaterial({ color: 0x0f172a }));
+  w.rotation.z = Math.PI / 2; w.position.set(x, 0.42, z);
+  return w;
+}
+
 function spawnVehicle(type, x, z, rotY = 0) {
   const g = new THREE.Group();
-  let maxSpeed = 0.65, name = "機車";
+  let name = "轎車", maxSpeed = 0.85, w = 2.1, d = 4.4;
 
-  if (type === "scooter") {
-    name = "勁戰 125 機車"; maxSpeed = 0.72;
-    const frame = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.9, 2.1), new THREE.MeshStandardMaterial({ color: 0xeab308 }));
-    frame.position.y = 0.65; g.add(frame);
-    // 騎士與安全帽 (還原截圖)
-    const rider = createHumanMesh(0x2563eb, 0x0f172a, true);
-    rider.scale.set(0.85, 0.85, 0.85); rider.position.set(0, 0.2, -0.1);
-    g.add(rider);
+  if (type === "van") {
+    // 白色廂型車 (還原截圖)
+    name = "廂型車"; maxSpeed = 0.78; w = 2.3; d = 5.0;
+    const body = new THREE.Mesh(new THREE.BoxGeometry(w, 1.85, d), new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.4 }));
+    body.position.y = 1.25; g.add(body);
+    const windshield = new THREE.Mesh(new THREE.PlaneGeometry(1.9, 0.9), new THREE.MeshStandardMaterial({ color: 0x0f172a }));
+    windshield.position.set(0, 1.6, d/2 + 0.02); windshield.rotation.x = -0.25; g.add(windshield);
+    g.add(createWheel(-1.1, 1.6), createWheel(1.1, 1.6), createWheel(-1.1, -1.6), createWheel(1.1, -1.6));
   } else if (type === "taxi") {
-    name = "台灣大車隊小黃"; maxSpeed = 0.85;
-    const body = new THREE.Mesh(new THREE.BoxGeometry(2.1, 1.2, 4.4), new THREE.MeshStandardMaterial({ color: 0xfacc15 }));
-    body.position.y = 0.8; g.add(body);
-    const roof = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.3, 0.4), new THREE.MeshBasicMaterial({ color: 0xfef08a }));
-    roof.position.y = 1.5; g.add(roof);
-  } else if (type === "supercar") {
-    name = "改裝渦輪超跑"; maxSpeed = 1.15;
-    const body = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.95, 4.6), new THREE.MeshStandardMaterial({ color: 0xef4444, metalness: 0.6, roughness: 0.2 }));
+    name = "台灣大車隊小黃"; maxSpeed = 0.92;
+    const body = new THREE.Mesh(new THREE.BoxGeometry(2.1, 1.1, 4.4), new THREE.MeshStandardMaterial({ color: 0xfacc15 }));
+    body.position.y = 0.85; g.add(body);
+    const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.75, 2.2), new THREE.MeshStandardMaterial({ color: 0xfef08a }));
+    cabin.position.set(0, 1.65, -0.2); g.add(cabin);
+    g.add(createWheel(-1.05, 1.4), createWheel(1.05, 1.4), createWheel(-1.05, -1.4), createWheel(1.05, -1.4));
+  } else if (type === "scooter") {
+    name = "勁戰 125 機車"; maxSpeed = 0.82; w = 0.9; d = 2.1;
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.85, 2.0), new THREE.MeshStandardMaterial({ color: 0x0284c7 }));
     body.position.y = 0.65; g.add(body);
+    const rider = createCharacterMesh(0xeab308, 0x1e293b, true);
+    rider.scale.set(0.85, 0.85, 0.85); rider.position.set(0, 0.25, -0.1);
+    g.add(rider);
+    g.userData.rider = rider;
+  } else if (type === "supercar") {
+    name = "改裝渦輪超跑"; maxSpeed = 1.28;
+    const body = new THREE.Mesh(new THREE.BoxGeometry(2.25, 0.88, 4.6), new THREE.MeshStandardMaterial({ color: 0xef4444, metalness: 0.6, roughness: 0.2 }));
+    body.position.y = 0.7; g.add(body);
+    const spoiler = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.15, 0.4), new THREE.MeshStandardMaterial({ color: 0x0f172a }));
+    spoiler.position.set(0, 1.35, -2.0); g.add(spoiler);
+    g.add(createWheel(-1.1, 1.45), createWheel(1.1, 1.45), createWheel(-1.1, -1.45), createWheel(1.1, -1.45));
   } else if (type === "police") {
-    name = "宜蘭縣警局巡邏車"; maxSpeed = 0.78;
-    const body = new THREE.Mesh(new THREE.BoxGeometry(2.1, 1.2, 4.4), new THREE.MeshStandardMaterial({ color: 0xffffff }));
-    body.position.y = 0.8; g.add(body);
-    const stripe = new THREE.Mesh(new THREE.BoxGeometry(2.15, 0.4, 4.45), new THREE.MeshBasicMaterial({ color: 0x1d4ed8 }));
-    stripe.position.y = 0.75; g.add(stripe);
-    const siren = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.25, 0.3), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
-    siren.position.y = 1.5; g.add(siren);
+    name = "宜蘭縣警局巡邏車"; maxSpeed = 0.92;
+    const body = new THREE.Mesh(new THREE.BoxGeometry(2.15, 1.15, 4.5), new THREE.MeshStandardMaterial({ color: 0xffffff }));
+    body.position.y = 0.85; g.add(body);
+    const stripe = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.45, 4.55), new THREE.MeshBasicMaterial({ color: 0x1d4ed8 }));
+    stripe.position.y = 0.8; g.add(stripe);
+    const siren = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.25, 0.35), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
+    siren.position.y = 1.55; g.add(siren);
     g.userData.siren = siren;
+    g.add(createWheel(-1.05, 1.4), createWheel(1.05, 1.4), createWheel(-1.05, -1.4), createWheel(1.05, -1.4));
   }
-
-  // 車頭大燈與地面光錐
-  const headlight = new THREE.SpotLight(0xfef9c3, 2.2, 28, Math.PI / 5, 0.4);
-  headlight.position.set(0, 1.0, 1.2);
-  const targetObj = new THREE.Object3D();
-  targetObj.position.set(0, 0, 12);
-  g.add(targetObj);
-  headlight.target = targetObj;
-  g.add(headlight);
 
   g.position.set(x, 0, z);
   g.rotation.y = rotY;
   scene.add(g);
 
-  const vObj = { mesh: g, type, name, maxSpeed, speed: 0, isPolice: type === "police", aiTimer: Math.random() * 100 };
+  const vObj = { mesh: g, type, name, maxSpeed, speed: 0, isPolice: type === "police", aiLaneX: x, aiDir: rotY === 0 ? 1 : -1 };
   vehicles.push(vObj);
   return vObj;
 }
 
-// 初始配置街頭載具
-spawnVehicle("scooter", -5, 12, Math.PI);
-spawnVehicle("scooter", 5, -25, 0);
-spawnVehicle("taxi", 8, 35, Math.PI);
-spawnVehicle("supercar", -28, -10, Math.PI / 2);
+// 在羅東、省道、宜蘭市配置豐富車流
+spawnVehicle("van", -6, 232, 0);
+spawnVehicle("taxi", 7, 255, Math.PI);
+spawnVehicle("scooter", -5, 222, 0);
+spawnVehicle("supercar", 25, 232, Math.PI / 2);
+
+spawnVehicle("van", -6, -232, 0);
+spawnVehicle("taxi", 7, -255, Math.PI);
+spawnVehicle("scooter", 5, -220, Math.PI);
+spawnVehicle("supercar", -25, -232, -Math.PI / 2);
+
+// 台九線南北往返車流
+spawnVehicle("taxi", -7, 80, 0);
+spawnVehicle("van", 7, -80, Math.PI);
+spawnVehicle("scooter", -6, -40, 0);
 
 // =========================================================
-// 4. 路人 NPC 與 3D 頭頂對話氣泡 (還原「真的假的？」)
+// 6. 任務系統 (羅東夜市、蘭陽大橋、宜蘭東門夜市任務點)
+// =========================================================
+const missions = [
+  { id: 0, title: "📦 羅東夜市外送急件", desc: "搶一台車，將包心粉圓跨過蘭陽大橋送到【宜蘭東門夜市】！", startX: -20, startZ: 215, endX: -20, endZ: -215, reward: 3500 },
+  { id: 1, title: "🏎️ 台九線蘭陽大橋飆車王", desc: "駕駛載具以極速衝過【蘭陽大橋北端檢查點】！", startX: 12, startZ: 150, endX: 12, endZ: -60, reward: 5000 }
+];
+let activeMission = null;
+
+const missionRing = new THREE.Mesh(
+  new THREE.RingGeometry(2.2, 3.2, 24),
+  new THREE.MeshBasicMaterial({ color: 0xfacc15, side: THREE.DoubleSide })
+);
+missionRing.rotation.x = -Math.PI / 2;
+missionRing.position.set(missions[0].startX, 0.2, missions[0].startZ);
+scene.add(missionRing);
+
+// =========================================================
+// 7. 路人 NPC 與對話氣泡
 // =========================================================
 const npcs = [];
-const quotes = ["真的假的？", "羅東夜市超擠！", "等一下去吃包心粉圓", "小心紅線會被拖吊喔", "這台勁戰改很大喔！", "宜蘭今天沒下雨耶！"];
+const quotes = ["真的假的？", "羅東夜市超多人！", "7-TWELVE 可以走進去買東西喔", "小心警察不會下車直接撞人！", "宜蘭今天天氣超好"];
 const bubblesLayer = document.getElementById("bubbles-layer");
 
-for (let i = 0; i < 14; i++) {
-  const npcMesh = createHumanMesh(
-    Math.random() > 0.5 ? 0xf8fafc : 0x38bdf8,
-    0x334155,
-    false
-  );
-  const nx = (Math.random() - 0.5) * 140;
-  const nz = (Math.random() - 0.5) * 140;
-  npcMesh.position.set(nx, 0, nz);
-  scene.add(npcMesh);
+for (let i = 0; i < 22; i++) {
+  const inLuodong = i % 2 === 0;
+  const nx = (Math.random() - 0.5) * 120;
+  const nz = (inLuodong ? 240 : -240) + (Math.random() - 0.5) * 100;
+  const mesh = createCharacterMesh(Math.random() > 0.5 ? 0xf8fafc : 0x38bdf8, 0x334155, false);
+  mesh.position.set(nx, 0, nz);
+  scene.add(mesh);
 
-  const bubble = document.createElement("div");
-  bubble.className = "speech-bubble";
-  bubble.innerText = quotes[i % quotes.length];
-  bubblesLayer.appendChild(bubble);
+  const b = document.createElement("div");
+  b.className = "speech-bubble";
+  b.innerText = quotes[i % quotes.length];
+  bubblesLayer.appendChild(b);
 
-  npcs.push({
-    mesh: npcMesh, bubble,
-    dir: Math.random() * Math.PI * 2,
-    hp: 30, alive: true,
-    chatTimer: Math.random() * 300
-  });
+  npcs.push({ mesh, bubble: b, dir: Math.random() * Math.PI * 2, alive: true });
 }
 
 // =========================================================
-// 5. 控制與互動事件 (WASD、滑鼠、F搶車、T手機、射擊)
+// 8. 碰撞檢測工具 (確保不穿牆)
+// =========================================================
+function checkWallCollision(nx, nz, radius = 0.8) {
+  for (let i = 0; i < colliders.length; i++) {
+    const c = colliders[i];
+    if (nx + radius > c.minX && nx - radius < c.maxX && nz + radius > c.minZ && nz - radius < c.maxZ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// =========================================================
+// 9. 輸入控制 (鍵鼠 + 手機觸控搖桿)
 // =========================================================
 const keys = {};
-let camYaw = 0;
-let camPitch = 0.28;
+let joyVec = { x: 0, z: 0 };
+let camYaw = 0, camPitch = 0.32;
 const bullets = [];
 
-window.addEventListener("keydown", e => {
-  keys[e.code] = true;
-  if (e.code === "KeyF") toggleVehicle();
-  if (e.code === "Tab") {
-    e.preventDefault();
-    playerState.weaponIdx = (playerState.weaponIdx + 1) % playerState.weapons.length;
-    document.getElementById("weapon-val").innerText = "武器：" + playerState.weapons[playerState.weaponIdx];
+function startGame() {
+  isGodMode = document.getElementById('god-mode-check').checked;
+  if (isGodMode) {
+    player.money = 99999999;
+    player.hp = 9999;
   }
-  if (e.code === "KeyT" || e.code === "Escape") {
-    const phone = document.getElementById("phone-ui");
-    phone.style.display = phone.style.display === "flex" ? "none" : "flex";
+  if (selectedCity === 'yilan') {
+    player.x = -10; player.z = -245;
+  } else {
+    player.x = -10; player.z = 245;
+  }
+  document.getElementById('start-screen').style.display = 'none';
+  if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
+    document.getElementById('mobile-controls').style.display = 'block';
+  }
+  gameStarted = true;
+  updateHUD();
+}
+
+window.addEventListener('keydown', e => {
+  keys[e.code] = true;
+  if (!gameStarted) return;
+  if (e.code === 'KeyF') handleInteract();
+  if (e.code === 'KeyM') toggleBigMap();
+  if (e.code === 'KeyT') openPhone();
+  if (e.code === 'Tab') { e.preventDefault(); cycleWeapon(); }
+  if (e.code === 'Escape') {
+    document.getElementById('big-map-modal').style.display = 'none';
+    document.getElementById('side-panel').style.display = 'none';
   }
 });
-window.addEventListener("keyup", e => keys[e.code] = false);
+window.addEventListener('keyup', e => keys[e.code] = false);
 
-window.addEventListener("mousemove", e => {
+// 滑鼠與手指滑動旋轉 3D 視角
+let lastTouchX = null, lastTouchY = null;
+window.addEventListener('mousemove', e => {
   if (document.pointerLockElement === renderer.domElement || e.buttons === 2) {
     camYaw -= e.movementX * 0.004;
     camPitch = Math.max(0.08, Math.min(0.85, camPitch + e.movementY * 0.003));
   }
 });
-
-renderer.domElement.addEventListener("mousedown", e => {
-  if (e.button === 0) {
-    if (document.pointerLockElement !== renderer.domElement && document.getElementById("phone-ui").style.display !== "flex") {
-      renderer.domElement.requestPointerLock();
-    }
-    shootBullet();
+renderer.domElement.addEventListener('mousedown', e => {
+  if (gameStarted && e.button === 0) {
+    if (document.pointerLockElement !== renderer.domElement) renderer.domElement.requestPointerLock();
+    doAttack();
   }
 });
+renderer.domElement.addEventListener('touchstart', e => {
+  const t = e.touches[0];
+  lastTouchX = t.clientX; lastTouchY = t.clientY;
+});
+renderer.domElement.addEventListener('touchmove', e => {
+  const t = e.touches[0];
+  if (lastTouchX !== null) {
+    camYaw -= (t.clientX - lastTouchX) * 0.007;
+    camPitch = Math.max(0.08, Math.min(0.85, camPitch + (t.clientY - lastTouchY) * 0.005));
+  }
+  lastTouchX = t.clientX; lastTouchY = t.clientY;
+});
+renderer.domElement.addEventListener('touchend', () => { lastTouchX = null; lastTouchY = null; });
 
-function toggleVehicle() {
-  if (playerState.inVehicle) {
-    // 下車
-    const v = playerState.inVehicle;
-    playerState.x = v.mesh.position.x + 2.5;
-    playerState.z = v.mesh.position.z;
-    playerState.inVehicle = null;
+// 手機虛擬搖桿邏輯
+const joyZone = document.getElementById('joystick-zone');
+const joyKnob = document.getElementById('joystick-knob');
+joyZone.addEventListener('touchmove', e => {
+  e.preventDefault();
+  const rect = joyZone.getBoundingClientRect();
+  const t = e.touches[0];
+  let dx = t.clientX - (rect.left + 60);
+  let dy = t.clientY - (rect.top + 60);
+  const dist = Math.min(40, Math.hypot(dx, dy));
+  const ang = Math.atan2(dy, dx);
+  joyKnob.style.left = (35 + Math.cos(ang) * dist) + 'px';
+  joyKnob.style.top = (35 + Math.sin(ang) * dist) + 'px';
+  joyVec.x = (Math.cos(ang) * dist) / 40;
+  joyVec.z = (Math.sin(ang) * dist) / 40;
+});
+joyZone.addEventListener('touchend', () => {
+  joyKnob.style.left = '35px'; joyKnob.style.top = '35px';
+  joyVec.x = 0; joyVec.z = 0;
+});
+
+// =========================================================
+// 10. 互動、超商購物、空手拳擊與射擊系統
+// =========================================================
+let nearVehicle = null, nearStore = null;
+
+function handleInteract() {
+  if (player.inVehicle) {
+    const v = player.inVehicle;
+    player.x = v.mesh.position.x + 2.6;
+    player.z = v.mesh.position.z;
+    player.inVehicle = null;
     playerMesh.visible = true;
-  } else {
-    // 尋找最近載具搶車
-    let nearest = null, minDist = 6.5;
-    vehicles.forEach(v => {
-      const d = Math.hypot(v.mesh.position.x - playerState.x, v.mesh.position.z - playerState.z);
-      if (d < minDist) { minDist = d; nearest = v; }
-    });
-    if (nearest) {
-      playerState.inVehicle = nearest;
-      playerMesh.visible = false;
-      // 搶車有機率觸發 1 星通緝
-      if (!nearest.isPolice && Math.random() < 0.45) increaseWanted(1);
-      if (nearest.isPolice) increaseWanted(2);
+    return;
+  }
+  if (nearStore) {
+    openStoreMenu(nearStore);
+    return;
+  }
+  if (nearVehicle) {
+    player.inVehicle = nearVehicle;
+    playerMesh.visible = false;
+    if (nearVehicle.mesh.userData.rider) nearVehicle.mesh.userData.rider.visible = false;
+    if (!nearVehicle.isPolice && Math.random() < 0.4) addWanted(1);
+    if (nearVehicle.isPolice) addWanted(2);
+  }
+}
+
+function cycleWeapon() {
+  for (let i = 1; i <= player.weapons.length; i++) {
+    const idx = (player.weaponIdx + i) % player.weapons.length;
+    if (player.weapons[idx].owned || isGodMode) {
+      player.weaponIdx = idx;
+      break;
     }
   }
-}
-
-function shootBullet() {
-  if (document.getElementById("phone-ui").style.display === "flex") return;
-  const originX = playerState.inVehicle ? playerState.inVehicle.mesh.position.x : playerState.x;
-  const originZ = playerState.inVehicle ? playerState.inVehicle.mesh.position.z : playerState.z;
-
-  const count = playerState.weaponIdx === 1 ? 3 : 1; // 衝鋒槍連發
-  for (let i = 0; i < count; i++) {
-    const spread = (Math.random() - 0.5) * 0.08 * i;
-    const angle = camYaw + Math.PI + spread;
-    const bMesh = new THREE.Mesh(
-      new THREE.SphereGeometry(0.18, 6, 6),
-      new THREE.MeshBasicMaterial({ color: 0xfacc15 })
-    );
-    bMesh.position.set(originX, 1.5, originZ);
-    scene.add(bMesh);
-    bullets.push({
-      mesh: bMesh,
-      vx: Math.sin(angle) * 2.4,
-      vz: Math.cos(angle) * 2.4,
-      life: 45
-    });
-  }
-  if (Math.random() < 0.25) increaseWanted(1);
-}
-
-// =========================================================
-// 6. 五星級通緝與特警圍捕系統 + 手機功能
-// =========================================================
-function increaseWanted(amt) {
-  playerState.wanted = Math.min(5, playerState.wanted + amt);
   updateHUD();
-  // 依星數派出警車支援
-  const targetCops = playerState.wanted * 2;
-  const currentCops = vehicles.filter(v => v.isPolice).length;
-  for (let i = currentCops; i < targetCops; i++) {
-    const angle = Math.random() * Math.PI * 2;
-    spawnVehicle("police", playerState.x + Math.cos(angle) * 65, playerState.z + Math.sin(angle) * 65);
+}
+
+function doAttack() {
+  const w = player.weapons[player.weaponIdx];
+  const ox = player.inVehicle ? player.inVehicle.mesh.position.x : player.x;
+  const oz = player.inVehicle ? player.inVehicle.mesh.position.z : player.z;
+  const ang = camYaw + Math.PI;
+
+  // 空手揮拳或球棒近戰
+  if (player.weaponIdx <= 1) {
+    playerMesh.position.y = 0.35;
+    setTimeout(() => playerMesh.position.y = 0, 120);
+    npcs.forEach(n => {
+      if (n.alive && Math.hypot(n.mesh.position.x - ox, n.mesh.position.z - oz) < w.range) {
+        n.alive = false; n.mesh.rotation.x = Math.PI / 2; n.bubble.style.display = 'none';
+        player.money += 350; addWanted(1); updateHUD();
+      }
+    });
+    return;
   }
+
+  // 槍械射擊
+  if (!isGodMode) {
+    if (w.ammo <= 0) { alert("子彈已耗盡！請進入 7-TWELVE 超商購買彈藥。"); return; }
+    w.ammo--;
+  }
+  const bMesh = new THREE.Mesh(new THREE.SphereGeometry(0.18), new THREE.MeshBasicMaterial({ color: 0xfacc15 }));
+  bMesh.position.set(ox, 1.5, oz);
+  scene.add(bMesh);
+  bullets.push({ mesh: bMesh, vx: Math.sin(ang) * 2.8, vz: Math.cos(ang) * 2.8, life: 45 });
+  if (Math.random() < 0.25) addWanted(1);
+  updateHUD();
+}
+
+function addWanted(amt) {
+  player.wanted = Math.min(5, player.wanted + amt);
+  const targetCops = player.wanted * 2;
+  const curCops = vehicles.filter(v => v.isPolice).length;
+  for (let i = curCops; i < targetCops; i++) {
+    const a = Math.random() * Math.PI * 2;
+    spawnVehicle("police", player.x + Math.cos(a) * 65, player.z + Math.sin(a) * 65);
+  }
+  updateHUD();
 }
 
 function updateHUD() {
-  document.getElementById("money-val").innerText = playerState.money.toLocaleString();
-  document.getElementById("hp-bar").style.width = Math.max(0, playerState.hp) + "%";
-  const starSpans = document.querySelectorAll("#wanted-stars span");
-  starSpans.forEach((s, idx) => {
-    s.className = idx < playerState.wanted ? "active" : "";
+  const region = player.z > 25 ? "羅東鎮" : (player.z < -25 ? "宜蘭市" : "蘭陽大橋");
+  document.getElementById('weather-hud').innerText = `☀️ 14:24  32°C  ${region}`;
+  document.getElementById('money-val').innerText = isGodMode ? "∞ 無限" : player.money.toLocaleString();
+  document.getElementById('hp-bar').style.width = isGodMode ? "100%" : Math.max(0, player.hp) + "%";
+
+  const w = player.weapons[player.weaponIdx];
+  const ammoTxt = w.ammo === Infinity ? "" : ` (${isGodMode ? '∞' : w.ammo}發)`;
+  document.getElementById('weapon-hud').innerText = `武器：${w.name}${ammoTxt}`;
+
+  document.querySelectorAll('#stars-hud span').forEach((s, i) => {
+    s.className = i < player.wanted ? 'active' : '';
   });
 }
 
-window.buyHeal = () => {
-  if (playerState.money >= 200) {
-    playerState.money -= 200;
-    playerState.hp = Math.min(100, playerState.hp + 50);
-    updateHUD();
-  }
-};
-window.clearWanted = () => {
-  if (playerState.money >= 1000 && playerState.wanted > 0) {
-    playerState.money -= 1000;
-    playerState.wanted = 0;
-    // 移除場上警車
+// =========================================================
+// 11. 超商購物選單 & 智慧手機選單
+// =========================================================
+function openStoreMenu(store) {
+  const p = document.getElementById('side-panel');
+  p.style.display = 'block';
+  p.innerHTML = `
+    <div class="panel-title">🏪 7-TWELVE ${store.name}</div>
+    <button class="panel-btn" onclick="buyItem('heal', 150)">🍱 奮起湖便當 + 御茶園 (+50 HP)<small>NT$ 150</small></button>
+    <button class="panel-btn" onclick="buyItem('bat', 500)">🏏 購買夜市球棒<small>NT$ 500</small></button>
+    <button class="panel-btn" onclick="buyItem('pistol', 2000)">🔫 黑市購買 9mm 手槍 + 彈藥<small>NT$ 2,000</small></button>
+    <button class="panel-btn" onclick="buyItem('smg', 4500)">🔥 黑市購買衝鋒槍 + 彈藥<small>NT$ 4,500</small></button>
+    <button class="panel-btn" style="text-align:center; background:#ef4444;" onclick="document.getElementById('side-panel').style.display='none'">離開櫃檯</button>
+  `;
+}
+
+function openPhone() {
+  const p = document.getElementById('side-panel');
+  if (p.style.display === 'block') { p.style.display = 'none'; return; }
+  p.style.display = 'block';
+  p.innerHTML = `
+    <div class="panel-title">📱 宜蘭智慧通 OS</div>
+    <button class="panel-btn" onclick="buyItem('clear', 1000)">🚓 聯繫宜蘭警局消星<small>NT$ 1,000 清除通緝</small></button>
+    <button class="panel-btn" onclick="buyItem('car', 2500)">🏎️ 呼叫改裝超跑空投<small>NT$ 2,500 送車到面前</small></button>
+    <button class="panel-btn" onclick="buyItem('tp_luodong', 0)">🚄 快速傳送：羅東車站<small>免費瞬間移動</small></button>
+    <button class="panel-btn" onclick="buyItem('tp_yilan', 0)">🚄 快速傳送：宜蘭幾米廣場<small>免費瞬間移動</small></button>
+    <button class="panel-btn" style="text-align:center; background:#475569;" onclick="document.getElementById('side-panel').style.display='none'">關閉手機</button>
+  `;
+}
+
+window.buyItem = (type, cost) => {
+  if (!isGodMode && player.money < cost) { alert("新台幣不足！"); return; }
+  if (!isGodMode) player.money -= cost;
+  if (type === 'heal') player.hp = Math.min(100, player.hp + 50);
+  if (type === 'bat') { player.weapons[1].owned = true; player.weaponIdx = 1; }
+  if (type === 'pistol') { player.weapons[2].owned = true; player.weapons[2].ammo += 36; player.weaponIdx = 2; }
+  if (type === 'smg') { player.weapons[3].owned = true; player.weapons[3].ammo += 90; player.weaponIdx = 3; }
+  if (type === 'clear') {
+    player.wanted = 0;
     for (let i = vehicles.length - 1; i >= 0; i--) {
-      if (vehicles[i].isPolice) {
-        scene.remove(vehicles[i].mesh);
-        vehicles.splice(i, 1);
-      }
+      if (vehicles[i].isPolice) { scene.remove(vehicles[i].mesh); vehicles.splice(i, 1); }
     }
-    updateHUD();
   }
-};
-window.spawnSupercar = () => {
-  if (playerState.money >= 2500) {
-    playerState.money -= 2500;
-    spawnVehicle("supercar", playerState.x + 4, playerState.z + 4, camYaw);
-    updateHUD();
-  }
-};
-window.addFiveStars = () => {
-  increaseWanted(5);
-  document.getElementById("phone-ui").style.display = "none";
+  if (type === 'car') spawnVehicle('supercar', player.x + 4, player.z + 4, camYaw);
+  if (type === 'tp_luodong') { player.x = -10; player.z = 245; }
+  if (type === 'tp_yilan') { player.x = -10; player.z = -245; }
+  updateHUD();
 };
 
 // =========================================================
-// 7. 左下角即時雷達小地圖渲染
+// 12. 全宜蘭大地圖 (M鍵) 與左下角雷達小地圖
 // =========================================================
-const minimapCanvas = document.getElementById("minimap");
-const mCtx = minimapCanvas.getContext("2d");
+function toggleBigMap() {
+  const modal = document.getElementById('big-map-modal');
+  modal.style.display = modal.style.display === 'flex' ? 'none' : 'flex';
+  if (modal.style.display === 'flex') drawBigMap();
+}
 
+const bigCanvas = document.getElementById('big-map-canvas');
+const bCtx = bigCanvas.getContext('2d');
+
+bigCanvas.addEventListener('click', e => {
+  const rect = bigCanvas.getBoundingClientRect();
+  const cx = ((e.clientX - rect.left) / rect.width) * 820;
+  const cy = ((e.clientY - rect.top) / rect.height) * 580;
+  // 座標反推世界位置 (地圖橫向為 Z 軸：左=宜蘭市 -400, 右=羅東鎮 +400)
+  player.waypoint = {
+    z: ((cx - 410) / 410) * 380,
+    x: ((cy - 290) / 290) * 260
+  };
+  drawBigMap();
+});
+
+function drawBigMap() {
+  bCtx.fillStyle = "#142218"; bCtx.fillRect(0, 0, 820, 580);
+  // 太平洋海岸線
+  bCtx.fillStyle = "#0369a1"; bCtx.fillRect(0, 460, 820, 120);
+  bCtx.fillStyle = "#bae6fd"; bCtx.font = "bold 16px Microsoft JhengHei";
+  bCtx.fillText("🌊 太平洋 (Pacific Ocean)", 340, 520);
+
+  // 蘭陽溪
+  bCtx.fillStyle = "#0284c7"; bCtx.fillRect(390, 0, 40, 480);
+  bCtx.fillStyle = "#fff"; bCtx.fillText("蘭陽溪", 386, 120);
+
+  // 道路網 (比照台北 GTA 地圖風格)
+  bCtx.strokeStyle = "#64748b"; bCtx.lineWidth = 6;
+  bCtx.beginPath(); bCtx.moveTo(40, 290); bCtx.lineTo(780, 290); bCtx.stroke(); // 台九線
+  bCtx.strokeStyle = "#eab308"; bCtx.lineWidth = 4;
+  bCtx.beginPath(); bCtx.moveTo(40, 390); bCtx.lineTo(780, 390); bCtx.stroke(); // 國道五號
+
+  // 區域大字標示
+  bCtx.fillStyle = "#ffffff"; bCtx.font = "900 24px Microsoft JhengHei";
+  bCtx.fillText("宜蘭市 YILAN CITY", 110, 80);
+  bCtx.fillText("羅東鎮 LUODONG", 530, 80);
+  bCtx.font = "bold 15px Microsoft JhengHei"; bCtx.fillStyle = "#94a3b8";
+  bCtx.fillText("礁溪鄉", 40, 180); bCtx.fillText("員山鄉", 140, 180);
+  bCtx.fillText("五結鄉", 520, 360); bCtx.fillText("冬山鄉", 680, 180);
+
+  // 地標圖示
+  landmarks.forEach(lm => {
+    const mx = 410 + (lm.z / 380) * 410;
+    const my = 290 + (lm.x / 260) * 290;
+    bCtx.fillStyle = lm.color; bCtx.beginPath(); bCtx.arc(mx, my, 7, 0, Math.PI * 2); bCtx.fill();
+    bCtx.fillStyle = "#fde047"; bCtx.font = "bold 12px Microsoft JhengHei";
+    bCtx.fillText(lm.name, mx + 10, my + 4);
+  });
+
+  // 導航標記點
+  if (player.waypoint) {
+    const wx = 410 + (player.waypoint.z / 380) * 410;
+    const wy = 290 + (player.waypoint.x / 260) * 290;
+    bCtx.strokeStyle = "#ef4444"; bCtx.lineWidth = 3;
+    bCtx.beginPath(); bCtx.arc(wx, wy, 12, 0, Math.PI * 2); bCtx.stroke();
+    bCtx.fillStyle = "#ef4444"; bCtx.fillText("🚩 導航目標", wx - 25, wy - 16);
+  }
+
+  // 玩家目前位置
+  const px = 410 + (player.z / 380) * 410;
+  const py = 290 + (player.x / 260) * 290;
+  bCtx.fillStyle = "#4ade80"; bCtx.beginPath(); bCtx.arc(px, py, 8, 0, Math.PI * 2); bCtx.fill();
+  bCtx.strokeStyle = "#fff"; bCtx.lineWidth = 2; bCtx.stroke();
+  bCtx.fillStyle = "#fff"; bCtx.fillText("你的位置", px - 22, py - 12);
+}
+
+const miniCtx = document.getElementById('minimap').getContext('2d');
 function drawMinimap() {
-  mCtx.fillStyle = "#1e293b";
-  mCtx.fillRect(0, 0, 190, 190);
+  miniCtx.fillStyle = "#1e293b"; miniCtx.fillRect(0, 0, 150, 150);
+  miniCtx.save(); miniCtx.translate(75, 75); miniCtx.rotate(camYaw);
+  const s = 0.7;
 
-  mCtx.save();
-  mCtx.translate(95, 95);
-  mCtx.rotate(camYaw);
-
-  const scale = 0.85;
-  // 繪製道路網
-  mCtx.fillStyle = "#475569";
-  [-110, 0, 110].forEach(pos => {
-    mCtx.fillRect((pos - playerState.x) * scale - 10, -200, 20, 400);
-    mCtx.fillRect(-200, (pos - playerState.z) * scale - 10, 400, 20);
+  // 道路
+  miniCtx.fillStyle = "#475569";
+  roads.forEach(r => {
+    miniCtx.fillRect((r.x - player.x - r.w/2) * s, (r.z - player.z - r.d/2) * s, r.w * s, r.d * s);
   });
-
-  // 繪製地標方塊
-  mCtx.fillStyle = "#0ea5e9";
-  buildings.forEach(b => {
-    mCtx.fillRect((b.x - playerState.x - b.w/2) * scale, (b.z - playerState.z - b.d/2) * scale, b.w * scale, b.d * scale);
+  // 建築
+  miniCtx.fillStyle = "#0ea5e9";
+  colliders.forEach(c => {
+    miniCtx.fillRect((c.minX - player.x) * s, (c.minZ - player.z) * s, (c.maxX - c.minX) * s, (c.maxZ - c.minZ) * s);
   });
-
-  // 繪製載具與警車光點
+  // 車輛
   vehicles.forEach(v => {
-    mCtx.fillStyle = v.isPolice ? "#ef4444" : "#facc15";
-    mCtx.beginPath();
-    mCtx.arc((v.mesh.position.x - playerState.x) * scale, (v.mesh.position.z - playerState.z) * scale, 4, 0, Math.PI * 2);
-    mCtx.fill();
+    miniCtx.fillStyle = v.isPolice ? "#ef4444" : "#facc15";
+    miniCtx.beginPath(); miniCtx.arc((v.mesh.position.x - player.x) * s, (v.mesh.position.z - player.z) * s, 3.5, 0, Math.PI * 2); miniCtx.fill();
   });
-
-  mCtx.restore();
+  miniCtx.restore();
 
   // 中心玩家箭頭
-  mCtx.fillStyle = "#ffffff";
-  mCtx.beginPath();
-  mCtx.moveTo(95, 87); mCtx.lineTo(101, 101); mCtx.lineTo(95, 98); mCtx.lineTo(89, 101);
-  mCtx.closePath(); mCtx.fill();
+  miniCtx.fillStyle = "#fff";
+  miniCtx.beginPath(); miniCtx.moveTo(75, 68); miniCtx.lineTo(80, 80); miniCtx.lineTo(75, 77); miniCtx.lineTo(70, 80); miniCtx.closePath(); miniCtx.fill();
 }
 
 // =========================================================
-// 8. 主遊戲循環 (物理移動、警匪追逐、對話氣泡投影)
+// 13. 主遊戲循環 (物理防穿牆、警察不下車追捕、任務判定)
 // =========================================================
 let tick = 0;
 function animate() {
   requestAnimationFrame(animate);
   tick++;
+  if (!gameStarted) { renderer.render(scene, camera); return; }
 
-  // A. 玩家步行或駕駛控制
-  if (!playerState.inVehicle) {
-    let moveX = 0, moveZ = 0;
-    const forwardX = -Math.sin(camYaw), forwardZ = -Math.cos(camYaw);
-    const rightX = Math.cos(camYaw), rightZ = -Math.sin(camYaw);
+  // 1. 玩家步行或駕駛移動 (含防穿牆檢查)
+  if (!player.inVehicle) {
+    let mx = 0, mz = 0;
+    const fwdX = -Math.sin(camYaw), fwdZ = -Math.cos(camYaw);
+    const rgtX = Math.cos(camYaw), rgtZ = -Math.sin(camYaw);
 
-    if (keys["KeyW"]) { moveX += forwardX; moveZ += forwardZ; }
-    if (keys["KeyS"]) { moveX -= forwardX; moveZ -= forwardZ; }
-    if (keys["KeyA"]) { moveX -= rightX; moveZ -= rightZ; }
-    if (keys["KeyD"]) { moveX += rightX; moveZ += rightZ; }
+    if (keys['KeyW']) { mx += fwdX; mz += fwdZ; }
+    if (keys['KeyS']) { mx -= fwdX; mz -= fwdZ; }
+    if (keys['KeyA']) { mx -= rgtX; mz -= rgtZ; }
+    if (keys['KeyD']) { mx += rgtX; mz += rgtZ; }
 
-    if (moveX !== 0 || moveZ !== 0) {
-      const len = Math.hypot(moveX, moveZ);
-      playerState.x += (moveX / len) * playerState.speed;
-      playerState.z += (moveZ / len) * playerState.speed;
-      playerState.rotY = Math.atan2(moveX, moveZ);
+    // 結合手機虛擬搖桿
+    if (joyVec.x !== 0 || joyVec.z !== 0) {
+      mx += rgtX * joyVec.x - fwdX * joyVec.z;
+      mz += rgtZ * joyVec.x - fwdZ * joyVec.z;
     }
-    playerMesh.position.set(playerState.x, 0, playerState.z);
-    playerMesh.rotation.y = playerState.rotY;
+
+    if (mx !== 0 || mz !== 0) {
+      const len = Math.hypot(mx, mz);
+      const stepX = (mx / len) * player.speed;
+      const stepZ = (mz / len) * player.speed;
+      if (!checkWallCollision(player.x + stepX, player.z, 0.75)) player.x += stepX;
+      if (!checkWallCollision(player.x, player.z + stepZ, 0.75)) player.z += stepZ;
+      player.rotY = Math.atan2(mx, mz);
+    }
+    playerMesh.position.set(player.x, 0, player.z);
+    playerMesh.rotation.y = player.rotY;
   } else {
-    const v = playerState.inVehicle;
-    if (keys["KeyW"]) v.speed = Math.min(v.maxSpeed, v.speed + 0.03);
-    else if (keys["KeyS"]) v.speed = Math.max(-v.maxSpeed * 0.4, v.speed - 0.03);
+    const v = player.inVehicle;
+    const throttle = keys['KeyW'] || joyVec.z < -0.2;
+    const brake = keys['KeyS'] || joyVec.z > 0.2;
+    const steerL = keys['KeyA'] || joyVec.x < -0.2;
+    const steerR = keys['KeyD'] || joyVec.x > 0.2;
+
+    if (throttle) v.speed = Math.min(v.maxSpeed, v.speed + 0.035);
+    else if (brake) v.speed = Math.max(-v.maxSpeed * 0.4, v.speed - 0.035);
     else v.speed *= 0.96;
 
     if (Math.abs(v.speed) > 0.02) {
-      const turnDir = v.speed >= 0 ? 1 : -1;
-      if (keys["KeyA"]) v.mesh.rotation.y += 0.045 * turnDir;
-      if (keys["KeyD"]) v.mesh.rotation.y -= 0.045 * turnDir;
+      const dir = v.speed >= 0 ? 1 : -1;
+      if (steerL) v.mesh.rotation.y += 0.045 * dir;
+      if (steerR) v.mesh.rotation.y -= 0.045 * dir;
     }
 
-    v.mesh.position.x += Math.sin(v.mesh.rotation.y) * v.speed;
-    v.mesh.position.z += Math.cos(v.mesh.rotation.y) * v.speed;
-    playerState.x = v.mesh.position.x;
-    playerState.z = v.mesh.position.z;
+    const nx = v.mesh.position.x + Math.sin(v.mesh.rotation.y) * v.speed;
+    const nz = v.mesh.position.z + Math.cos(v.mesh.rotation.y) * v.speed;
+    if (!checkWallCollision(nx, nz, 1.4)) {
+      v.mesh.position.x = nx; v.mesh.position.z = nz;
+    } else {
+      v.speed = -v.speed * 0.4; // 撞牆反彈
+    }
+    player.x = v.mesh.position.x;
+    player.z = v.mesh.position.z;
     camYaw = v.mesh.rotation.y + Math.PI;
   }
 
-  // B. 檢測是否靠近載具顯示「按 F 搶機車」
-  const promptEl = document.getElementById("interact-prompt");
-  if (!playerState.inVehicle) {
-    let nearV = null, minD = 6.5;
+  // 2. 檢測互動提示 (靠近車輛 OR 走進超商櫃檯)
+  const promptEl = document.getElementById('interact-prompt');
+  nearVehicle = null; nearStore = null;
+  if (!player.inVehicle) {
+    let minD = 6.0;
     vehicles.forEach(v => {
-      const d = Math.hypot(v.mesh.position.x - playerState.x, v.mesh.position.z - playerState.z);
-      if (d < minD) { minD = d; nearV = v; }
+      const d = Math.hypot(v.mesh.position.x - player.x, v.mesh.position.z - player.z);
+      if (d < minD) { minD = d; nearVehicle = v; }
     });
-    if (nearV) {
-      promptEl.style.display = "flex";
-      document.getElementById("interact-text").innerText = "搶 " + nearV.name;
+    enterableStores.forEach(st => {
+      if (Math.hypot(st.counterX - player.x, st.counterZ - player.z) < 4.5) nearStore = st;
+    });
+
+    if (nearStore) {
+      promptEl.style.display = 'flex';
+      document.getElementById('interact-label').innerText = `7-TWELVE ${nearStore.name} 結帳購物`;
+    } else if (nearVehicle) {
+      promptEl.style.display = 'flex';
+      document.getElementById('interact-label').innerText = `搶 ${nearVehicle.name}`;
     } else {
-      promptEl.style.display = "none";
+      promptEl.style.display = 'none';
     }
   } else {
-    promptEl.style.display = "none";
+    promptEl.style.display = 'none';
   }
 
-  // C. 子彈更新與擊中路人/警車掉落現金
-  for (let i = bullets.length - 1; i >= 0; i--) {
-    const b = bullets[i];
-    b.mesh.position.x += b.vx;
-    b.mesh.position.z += b.vz;
-    b.life--;
-
-    // 擊中 NPC 掉落新台幣
-    npcs.forEach(n => {
-      if (n.alive && Math.hypot(b.mesh.position.x - n.mesh.position.x, b.mesh.position.z - n.mesh.position.z) < 1.5) {
-        n.alive = false;
-        n.mesh.rotation.x = Math.PI / 2;
-        n.bubble.style.display = "none";
-        playerState.money += Math.floor(Math.random() * 500) + 300;
-        increaseWanted(1);
-        updateHUD();
-      }
-    });
-
-    if (b.life <= 0) {
-      scene.remove(b.mesh);
-      bullets.splice(i, 1);
-    }
-  }
-
-  // D. 警車 AI 追捕與紅藍警示燈閃爍
-  const sirenOverlay = document.getElementById("siren-overlay");
-  if (playerState.wanted > 0) {
-    const flashColor = Math.floor(tick / 12) % 2 === 0 ? "rgba(239, 68, 68, 0.28)" : "rgba(59, 130, 246, 0.28)";
-    sirenOverlay.style.boxShadow = `inset 0 0 75px ${flashColor}`;
-  } else {
-    sirenOverlay.style.boxShadow = "none";
-  }
-
+  // 3. 警車追捕 AI (警察絕對不會下車，全程駕駛警車圍捕撞擊與車內開火)
   vehicles.forEach(v => {
-    if (v.isPolice && v !== playerState.inVehicle) {
-      // 警燈閃爍
+    if (v === player.inVehicle) return;
+    if (v.isPolice) {
       if (v.mesh.userData.siren) {
         v.mesh.userData.siren.material.color.setHex(Math.floor(tick / 10) % 2 === 0 ? 0xef4444 : 0x3b82f6);
       }
-      const dx = playerState.x - v.mesh.position.x;
-      const dz = playerState.z - v.mesh.position.z;
+      const dx = player.x - v.mesh.position.x;
+      const dz = player.z - v.mesh.position.z;
       const dist = Math.hypot(dx, dz);
-      const targetAngle = Math.atan2(dx, dz);
-      v.mesh.rotation.y = targetAngle;
-
-      if (dist > 4.5) {
-        v.mesh.position.x += Math.sin(targetAngle) * (0.45 + playerState.wanted * 0.06);
-        v.mesh.position.z += Math.cos(targetAngle) * (0.45 + playerState.wanted * 0.06);
-      } else {
-        // 警察開火扣血
-        playerState.hp -= 0.08 * playerState.wanted;
+      const ang = Math.atan2(dx, dz);
+      v.mesh.rotation.y = ang;
+      if (dist > 4.8) {
+        const px = v.mesh.position.x + Math.sin(ang) * (0.48 + player.wanted * 0.06);
+        const pz = v.mesh.position.z + Math.cos(ang) * (0.48 + player.wanted * 0.06);
+        if (!checkWallCollision(px, pz, 1.3)) { v.mesh.position.x = px; v.mesh.position.z = pz; }
+      } else if (!isGodMode) {
+        player.hp -= 0.08 * player.wanted;
         updateHUD();
-        if (playerState.hp <= 0) {
-          alert("【 WASTED 慘遭羅東分局逮捕 】\n沒收醫療費 NT$ 2,000！");
-          playerState.hp = 100;
-          playerState.money = Math.max(0, playerState.money - 2000);
-          clearWanted();
+        if (player.hp <= 0) {
+          alert("【 WASTED 慘遭宜蘭警局逮捕 】扣除醫療費 NT$ 1,000");
+          player.hp = 100; player.money = Math.max(0, player.money - 1000);
+          buyItem('clear', 0);
         }
       }
+    } else {
+      // 一般民車沿道路巡航
+      v.mesh.position.z += Math.cos(v.mesh.rotation.y) * 0.18;
+      v.mesh.position.x += Math.sin(v.mesh.rotation.y) * 0.18;
+      if (v.mesh.position.z > 350) v.mesh.position.z = -350;
+      if (v.mesh.position.z < -350) v.mesh.position.z = 350;
+      if (v.mesh.position.x > 220) v.mesh.position.x = -220;
+      if (v.mesh.position.x < -220) v.mesh.position.x = 220;
     }
   });
 
-  // E. 路人走動與 3D 對話氣泡螢幕投影
+  // 4. 任務光圈判定
+  missionRing.rotation.z += 0.04;
+  if (!activeMission) {
+    const m = missions[0];
+    if (Math.hypot(player.x - m.startX, player.z - m.startZ) < 4.5) {
+      activeMission = m;
+      document.getElementById('mission-title').innerText = m.title;
+      document.getElementById('mission-desc').innerText = m.desc;
+      missionRing.position.set(m.endX, 0.2, m.endZ);
+      missionRing.material.color.setHex(0x4ade80);
+    }
+  } else {
+    if (Math.hypot(player.x - activeMission.endX, player.z - activeMission.endZ) < 6.0) {
+      alert(`🎉 任務完成：【${activeMission.title}】\n獲得報酬 NT$ ${activeMission.reward.toLocaleString()}！`);
+      player.money += activeMission.reward;
+      activeMission = null;
+      missionRing.position.set(missions[0].startX, 0.2, missions[0].startZ);
+      missionRing.material.color.setHex(0xfacc15);
+      document.getElementById('mission-title').innerText = "📌 目前任務：自由探索宜蘭";
+      document.getElementById('mission-desc').innerText = "任務已完成！可隨時再接取或探索宜蘭全境。";
+      updateHUD();
+    }
+  }
+
+  // 5. 子彈飛行與擊中路人
+  for (let i = bullets.length - 1; i >= 0; i--) {
+    const b = bullets[i];
+    b.mesh.position.x += b.vx; b.mesh.position.z += b.vz; b.life--;
+    npcs.forEach(n => {
+      if (n.alive && Math.hypot(b.mesh.position.x - n.mesh.position.x, b.mesh.position.z - n.mesh.position.z) < 1.5) {
+        n.alive = false; n.mesh.rotation.x = Math.PI / 2; n.bubble.style.display = 'none';
+        player.money += 400; addWanted(1); updateHUD();
+      }
+    });
+    if (b.life <= 0) { scene.remove(b.mesh); bullets.splice(i, 1); }
+  }
+
+  // 6. 路人走動與對話氣泡投影
   npcs.forEach(n => {
     if (!n.alive) return;
-    n.mesh.position.x += Math.sin(n.dir) * 0.04;
-    n.mesh.position.z += Math.cos(n.dir) * 0.04;
+    const nx = n.mesh.position.x + Math.sin(n.dir) * 0.04;
+    const nz = n.mesh.position.z + Math.cos(n.dir) * 0.04;
+    if (!checkWallCollision(nx, nz, 0.6)) { n.mesh.position.x = nx; n.mesh.position.z = nz; }
+    else n.dir += Math.PI;
     n.mesh.rotation.y = n.dir;
-    if (Math.random() < 0.01) n.dir += (Math.random() - 0.5) * 2;
 
-    // 將 3D 頭頂座標轉換為 2D 螢幕座標
-    const headPos = new THREE.Vector3(n.mesh.position.x, 3.1, n.mesh.position.z);
-    const distToCam = headPos.distanceTo(camera.position);
+    const headPos = new THREE.Vector3(n.mesh.position.x, 3.0, n.mesh.position.z);
+    const dCam = headPos.distanceTo(camera.position);
     headPos.project(camera);
-
-    if (headPos.z < 1 && distToCam < 45) {
-      const sx = (headPos.x * 0.5 + 0.5) * window.innerWidth;
-      const sy = (-(headPos.y * 0.5) + 0.5) * window.innerHeight;
-      n.bubble.style.display = "block";
-      n.bubble.style.left = sx + "px";
-      n.bubble.style.top = sy + "px";
-    } else {
-      n.bubble.style.display = "none";
-    }
+    if (headPos.z < 1 && dCam < 40) {
+      n.bubble.style.display = 'block';
+      n.bubble.style.left = ((headPos.x * 0.5 + 0.5) * window.innerWidth) + 'px';
+      n.bubble.style.top = ((-(headPos.y * 0.5) + 0.5) * window.innerHeight) + 'px';
+    } else n.bubble.style.display = 'none';
   });
 
-  // F. 第三人稱追尾攝影機跟隨
-  const camDist = playerState.inVehicle ? 11.5 : 8.5;
-  const camHeight = playerState.inVehicle ? 4.8 : 3.8;
-  camera.position.x = playerState.x + Math.sin(camYaw) * camDist;
-  camera.position.z = playerState.z + Math.cos(camYaw) * camDist;
-  camera.position.y = camHeight + Math.sin(camPitch) * 4;
-  camera.lookAt(playerState.x, 1.8, playerState.z);
+  // 7. 第三人稱攝影機追尾
+  const cDist = player.inVehicle ? 11.5 : 8.2;
+  const cHeight = player.inVehicle ? 4.8 : 3.6;
+  camera.position.x = player.x + Math.sin(camYaw) * cDist;
+  camera.position.z = player.z + Math.cos(camYaw) * cDist;
+  camera.position.y = cHeight + Math.sin(camPitch) * 4.2;
+  camera.lookAt(player.x, 1.8, player.z);
 
+  if (tick % 15 === 0) updateHUD();
   drawMinimap();
   renderer.render(scene, camera);
 }
 
-window.addEventListener("resize", () => {
+window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-updateHUD();
 animate();
 </script>
 </body>
