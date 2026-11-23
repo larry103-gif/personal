@@ -1164,4 +1164,900 @@ function startGame() {
   if (gameMode === 'edu') {
     isGodMode = true;
     player.wanted = 0;
-    document.getElementById('stars
+    document.getElementById('stars-hud').style.display = 'none';
+    document.getElementById('weapon-hud').innerText = '模式：🎓 教育觀光導覽 (和平模式)';
+    document.getElementById('weapon-hud').style.color = '#34d399';
+    document.getElementById('mission-title').innerText = '🎓 環遊臺灣：人文地理教育模式';
+    document.getElementById('mission-desc').innerText = '駕駛載具環遊全台灣！靠近各縣市地標會自動彈出地理歷史介紹，按 M 開啟真實衛星地圖。';
+    document.getElementById('control-hint').innerText = 'WASD / 方向鍵：移動開車 | Space：甩尾\nF：上下車/進超商 | M：真實衛星地圖 | T：導航手機';
+    document.getElementById('m-weapon-btn').style.display = 'none';
+    document.getElementById('m-atk-small').style.display = 'none';
+    document.getElementById('m-atk-big').style.display = 'none';
+    // 教育模式下移除街頭警車
+    for (let i = vehicles.length - 1; i >= 0; i--) {
+      if (vehicles[i].isPolice) { scene.remove(vehicles[i].mesh); vehicles.splice(i, 1); }
+    }
+  } else if (isGodMode) {
+    player.money = 99999999;
+    player.hp = 9999;
+  }
+
+  const sp = TAIWAN_CITIES[selectedCity] || TAIWAN_CITIES.yilan;
+  player.x = sp.x;
+  player.z = sp.z - 45;
+
+  document.getElementById('start-screen').style.display = 'none';
+  if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
+    document.getElementById('mobile-controls').style.display = 'block';
+  }
+  gameStarted = true;
+  updateHUD();
+}
+
+window.addEventListener('keydown', e => {
+  keys[e.code] = true;
+  if (!gameStarted) return;
+  if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
+  if (e.code === 'KeyF') handleInteract();
+  if (e.code === 'KeyM') toggleBigMap();
+  if (e.code === 'KeyT') openPhone();
+  if (e.code === 'Tab' && gameMode === 'free') { e.preventDefault(); cycleWeapon(); }
+  if (e.code === 'Escape') {
+    document.getElementById('big-map-modal').style.display = 'none';
+    document.getElementById('side-panel').style.display = 'none';
+    updatePauseState();
+  }
+});
+window.addEventListener('keyup', e => keys[e.code] = false);
+
+let lastTouchX = null, lastTouchY = null;
+window.addEventListener('mousemove', e => {
+  if (!isPaused && (document.pointerLockElement === renderer.domElement || e.buttons === 2)) {
+    camYaw -= e.movementX * 0.004;
+    camPitch = Math.max(0.08, Math.min(0.85, camPitch + e.movementY * 0.003));
+  }
+});
+renderer.domElement.addEventListener('mousedown', e => {
+  if (gameStarted && !isPaused && e.button === 0) {
+    if (document.pointerLockElement !== renderer.domElement) renderer.domElement.requestPointerLock();
+    if (gameMode === 'free') doAttack();
+  }
+});
+renderer.domElement.addEventListener('touchstart', e => {
+  const t = e.touches[0]; lastTouchX = t.clientX; lastTouchY = t.clientY;
+});
+renderer.domElement.addEventListener('touchmove', e => {
+  if (isPaused) return;
+  const t = e.touches[0];
+  if (lastTouchX !== null) {
+    camYaw -= (t.clientX - lastTouchX) * 0.007;
+    camPitch = Math.max(0.08, Math.min(0.85, camPitch + (t.clientY - lastTouchY) * 0.005));
+  }
+  lastTouchX = t.clientX; lastTouchY = t.clientY;
+});
+renderer.domElement.addEventListener('touchend', () => { lastTouchX = null; lastTouchY = null; });
+
+const joyZone = document.getElementById('joystick-zone');
+const joyKnob = document.getElementById('joystick-knob');
+joyZone.addEventListener('touchmove', e => {
+  e.preventDefault();
+  const rect = joyZone.getBoundingClientRect();
+  const t = e.touches[0];
+  let dx = t.clientX - (rect.left + 60);
+  let dy = t.clientY - (rect.top + 60);
+  const dist = Math.min(40, Math.hypot(dx, dy));
+  const ang = Math.atan2(dy, dx);
+  joyKnob.style.left = (35 + Math.cos(ang) * dist) + 'px';
+  joyKnob.style.top = (35 + Math.sin(ang) * dist) + 'px';
+  joyVec.x = (Math.cos(ang) * dist) / 40;
+  joyVec.z = (Math.sin(ang) * dist) / 40;
+});
+joyZone.addEventListener('touchend', () => {
+  joyKnob.style.left = '35px'; joyKnob.style.top = '35px';
+  joyVec.x = 0; joyVec.z = 0;
+});
+
+// =========================================================
+// 11. 互動、攻擊 (路人不會一拳死、車被打 3 下爆炸)、警察追捕
+// =========================================================
+let nearVehicle = null, nearStore = null;
+
+function handleInteract() {
+  if (isPaused) return;
+  if (player.inVehicle) {
+    const v = player.inVehicle;
+    player.x = v.mesh.position.x + 2.6;
+    player.z = v.mesh.position.z;
+    player.inVehicle = null;
+    playerMesh.visible = true;
+    document.getElementById('speedometer').style.display = 'none';
+    return;
+  }
+  if (nearStore) {
+    openStoreMenu(nearStore);
+    return;
+  }
+  if (nearVehicle && !nearVehicle.exploded) {
+    player.inVehicle = nearVehicle;
+    playerMesh.visible = false;
+    document.getElementById('speedometer').style.display = 'block';
+    updateCarHPUI(nearVehicle);
+    if (nearVehicle.mesh.userData.rider) nearVehicle.mesh.userData.rider.visible = false;
+    if (gameMode === 'free') {
+      if (!nearVehicle.isPolice && Math.random() < 0.45) addWanted(1);
+      if (nearVehicle.isPolice) addWanted(2);
+    }
+  }
+}
+
+function updateCarHPUI(v) {
+  const hearts = "❤️".repeat(Math.max(0, v.hp)) + "🖤".repeat(Math.max(0, 3 - v.hp));
+  document.getElementById('car-hp-txt').innerText = `車身耐久：${hearts} (${v.hp}/3)`;
+}
+
+function cycleWeapon() {
+  if (gameMode === 'edu') return;
+  for (let i = 1; i <= player.weapons.length; i++) {
+    const idx = (player.weaponIdx + i) % player.weapons.length;
+    if (player.weapons[idx].owned || isGodMode) {
+      player.weaponIdx = idx;
+      break;
+    }
+  }
+  updateHUD();
+}
+
+function doAttack() {
+  if (isPaused || gameMode === 'edu') return;
+  const w = player.weapons[player.weaponIdx];
+  const ox = player.inVehicle ? player.inVehicle.mesh.position.x : player.x;
+  const oz = player.inVehicle ? player.inVehicle.mesh.position.z : player.z;
+  const ang = camYaw + Math.PI;
+
+  // 徒手或球棒近戰：路人 100 HP，一拳僅扣 25 HP 並擊退，不會一拳打死！
+  if (player.weaponIdx <= 1) {
+    playerMesh.position.y = 0.35;
+    setTimeout(() => playerMesh.position.y = 0, 120);
+
+    npcs.forEach(n => {
+      if (!n.alive) return;
+      const dx = n.mesh.position.x - ox, dz = n.mesh.position.z - oz;
+      const dist = Math.hypot(dx, dz);
+      if (dist < w.range) {
+        n.hp -= w.dmg;
+        // 受擊擊退效果
+        const pushAng = Math.atan2(dx, dz);
+        const kx = n.mesh.position.x + Math.sin(pushAng) * 1.6;
+        const kz = n.mesh.position.z + Math.cos(pushAng) * 1.6;
+        if (!checkWallCollision(kx, kz, 0.6)) { n.mesh.position.x = kx; n.mesh.position.z = kz; }
+
+        if (n.hp > 0) {
+          n.bubble.innerText = `💢 哎喲！剩餘體力 ${n.hp}%`;
+          n.dir = pushAng; // 轉身逃跑
+        } else {
+          n.alive = false;
+          n.mesh.rotation.x = Math.PI / 2;
+          n.bubble.style.display = 'none';
+          player.money += 350;
+          addWanted(1);
+        }
+        if (Math.random() < 0.45) addWanted(1);
+        updateHUD();
+      }
+    });
+
+    footCops.forEach(c => {
+      if (!c.alive) return;
+      const dx = c.x - ox, dz = c.z - oz;
+      if (Math.hypot(dx, dz) < w.range) {
+        c.hp -= w.dmg;
+        const pushAng = Math.atan2(dx, dz);
+        c.x += Math.sin(pushAng) * 1.2;
+        c.z += Math.cos(pushAng) * 1.2;
+        c.mesh.position.set(c.x, 0, c.z);
+        if (c.hp <= 0) {
+          c.alive = false;
+          c.mesh.rotation.x = Math.PI / 2;
+        }
+        addWanted(1);
+        updateHUD();
+      }
+    });
+    return;
+  }
+
+  // 槍械射擊
+  if (!isGodMode) {
+    if (w.ammo <= 0) { alert("子彈已耗盡！請進入 7-TWELVE 超商補充。"); return; }
+    w.ammo--;
+  }
+  const bMesh = new THREE.Mesh(new THREE.SphereGeometry(0.18), new THREE.MeshBasicMaterial({ color: 0xfacc15 }));
+  bMesh.position.set(ox, 1.5, oz);
+  scene.add(bMesh);
+  bullets.push({ mesh: bMesh, vx: Math.sin(ang) * 2.9, vz: Math.cos(ang) * 2.9, dmg: w.dmg, life: 45 });
+  if (Math.random() < 0.3) addWanted(1);
+  updateHUD();
+}
+
+function addWanted(amt) {
+  if (gameMode === 'edu') return;
+  player.wanted = Math.min(5, player.wanted + amt);
+  // 警察系統強化：依據星數派出更多警車與特警包夾
+  const targetCops = Math.min(6, player.wanted + 1);
+  const curCops = vehicles.filter(v => v.isPolice && v.hasOfficer && !v.exploded).length;
+  for (let i = curCops; i < targetCops; i++) {
+    const a = (i * (Math.PI * 2 / targetCops)) + Math.random() * 0.4;
+    spawnVehicle("police", player.x + Math.cos(a) * 52, player.z + Math.sin(a) * 52);
+  }
+  updateHUD();
+}
+
+function updateHUD() {
+  let nearestCity = "環遊臺灣公路網";
+  let nearestObj = null;
+  let minD = Infinity;
+  Object.values(TAIWAN_CITIES).forEach(c => {
+    const d = Math.hypot(player.x - c.x, player.z - c.z);
+    if (d < minD) { minD = d; nearestCity = c.name; nearestObj = c; }
+  });
+  if (minD > 350) nearestCity = player.x > 150 ? "花東海岸山脈公路" : "西部縱貫公路";
+
+  document.getElementById('weather-hud').innerText = `☀️ 14:24  29°C  ${nearestCity}`;
+  document.getElementById('money-val').innerText = isGodMode ? "∞ 無限" : player.money.toLocaleString();
+  document.getElementById('hp-bar').style.width = isGodMode ? "100%" : Math.max(0, player.hp) + "%";
+
+  // 教育模式靠近地標自動顯示地理歷史導覽卡
+  const eduCard = document.getElementById('edu-card');
+  if (gameMode === 'edu' && nearestObj && minD < 140) {
+    eduCard.style.display = 'block';
+    document.getElementById('edu-title').innerText = `🏛️ ${nearestObj.name} — ${nearestObj.landmark}`;
+    document.getElementById('edu-body').innerText = nearestObj.edu;
+  } else {
+    eduCard.style.display = 'none';
+  }
+
+  if (gameMode === 'free') {
+    const w = player.weapons[player.weaponIdx];
+    const ammoTxt = w.ammo === Infinity ? "" : ` (${isGodMode ? '∞' : w.ammo}發)`;
+    document.getElementById('weapon-hud').innerText = `武器：${w.name}${ammoTxt}`;
+    document.querySelectorAll('#stars-hud span').forEach((s, i) => {
+      s.className = i < player.wanted ? 'active' : '';
+    });
+  }
+}
+
+function openStoreMenu(store) {
+  const p = document.getElementById('side-panel');
+  p.style.display = 'block';
+  updatePauseState();
+  if (gameMode === 'edu') {
+    p.innerHTML = `
+      <div class="panel-title">🏪 7-TWELVE ${store.name}</div>
+      <button class="panel-btn" onclick="buyItem('heal', 0)">🍱 免費領取環島補給便當與飲水<small>教育模式免費補給</small></button>
+      <button class="panel-btn" style="text-align:center; background:#ef4444;" onclick="closePanels()">離開超商</button>
+    `;
+    return;
+  }
+  p.innerHTML = `
+    <div class="panel-title">🏪 7-TWELVE ${store.name}</div>
+    <button class="panel-btn" onclick="buyItem('heal', 150)">🍱 奮起湖便當 + 御茶園 (+50 HP)<small>NT$ 150</small></button>
+    <button class="panel-btn" onclick="buyItem('bat', 500)">🏏 購買夜市球棒<small>NT$ 500</small></button>
+    <button class="panel-btn" onclick="buyItem('pistol', 2000)">🔫 購買 9mm 手槍 + 彈藥<small>NT$ 2,000</small></button>
+    <button class="panel-btn" onclick="buyItem('smg', 4500)">🔥 購買衝鋒槍 + 彈藥<small>NT$ 4,500</small></button>
+    <button class="panel-btn" style="text-align:center; background:#ef4444;" onclick="closePanels()">離開櫃檯</button>
+  `;
+}
+
+function openPhone() {
+  const p = document.getElementById('side-panel');
+  if (p.style.display === 'block') { closePanels(); return; }
+  document.getElementById('big-map-modal').style.display = 'none';
+  p.style.display = 'block';
+  updatePauseState();
+  let tpButtons = '';
+  Object.entries(TAIWAN_CITIES).forEach(([k, c]) => {
+    tpButtons += `<button class="panel-btn" onclick="navToCity('${k}')">🧭 導航至：${c.name} (${c.landmark})<small>沿公路規劃路線 (免費)</small></button>`;
+  });
+  const policeBtn = gameMode === 'free' ? `<button class="panel-btn" onclick="buyItem('clear', 0)">🚓 一鍵消除所有通緝星數<small>免費服務 (NT$ 0)</small></button>` : '';
+  p.innerHTML = `
+    <div class="panel-title">📱 環遊臺灣智慧通 (免費)</div>
+    ${policeBtn}
+    <button class="panel-btn" onclick="buyItem('heal', 0)">❤️ 立即恢復滿血狀態<small>免費服務 (NT$ 0)</small></button>
+    <button class="panel-btn" onclick="buyItem('car', 0)">🏎️ 呼叫環島雙渦輪超跑到身旁<small>免費服務 (NT$ 0)</small></button>
+    ${tpButtons}
+    <button class="panel-btn" style="text-align:center; background:#475569;" onclick="closePanels()">關閉手機 (繼續遊戲)</button>
+  `;
+}
+
+window.navToCity = (cityKey) => {
+  const sp = TAIWAN_CITIES[cityKey];
+  if (sp) {
+    computeGPSRoute(sp.x, sp.z - 45, sp.name);
+    closePanels();
+  }
+};
+
+function closePanels() {
+  document.getElementById('side-panel').style.display = 'none';
+  updatePauseState();
+}
+
+window.buyItem = (type, cost) => {
+  if (!isGodMode && cost > 0 && player.money < cost) { alert("新台幣不足！"); return; }
+  if (!isGodMode && cost > 0) player.money -= cost;
+
+  if (type === 'heal') player.hp = isGodMode ? 9999 : 100;
+  if (type === 'bat') { player.weapons[1].owned = true; player.weaponIdx = 1; }
+  if (type === 'pistol') { player.weapons[2].owned = true; player.weapons[2].ammo += 36; player.weaponIdx = 2; }
+  if (type === 'smg') { player.weapons[3].owned = true; player.weapons[3].ammo += 90; player.weaponIdx = 3; }
+  if (type === 'clear') {
+    player.wanted = 0;
+    for (let i = vehicles.length - 1; i >= 0; i--) {
+      if (vehicles[i].isPolice) { scene.remove(vehicles[i].mesh); vehicles.splice(i, 1); }
+    }
+    footCops.forEach(c => scene.remove(c.mesh));
+    footCops.length = 0;
+  }
+  if (type === 'car') spawnVehicle('supercar', player.x + 4, player.z + 4, camYaw);
+  updateHUD();
+};
+
+// =========================================================
+// 12. 真實衛星空照互動大地圖 (Leaflet + Esri 真實衛星航照圖磚 + Google Maps 連結)
+// =========================================================
+let leafletMap = null;
+let playerMapMarker = null;
+let routeMapPolyline = null;
+let destMapMarker = null;
+
+function initLeafletMap() {
+  if (leafletMap) return;
+  leafletMap = L.map('leaflet-map', { zoomControl: true }).setView([23.75, 120.95], 8);
+
+  // 真實世界衛星空照圖磚 (Esri World Imagery，支援無段放大至真實建築與街道)
+  const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    maxZoom: 19,
+    attribution: '真實衛星空照圖層'
+  }).addTo(leafletMap);
+
+  // 疊加真實道路與地名標籤圖層
+  const labelsLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png', {
+    maxZoom: 19
+  }).addTo(leafletMap);
+
+  // 標記全台灣 16 大縣市地標
+  Object.entries(TAIWAN_CITIES).forEach(([k, c]) => {
+    const marker = L.circleMarker([c.lat, c.lng], {
+      radius: 6, color: '#ffffff', weight: 2, fillColor: '#f59e0b', fillOpacity: 0.95
+    }).addTo(leafletMap);
+    marker.bindTooltip(`<b>${c.name}</b><br>${c.landmark}`, { direction: 'top' });
+    marker.on('click', (e) => {
+      L.DomEvent.stopPropagation(e);
+      computeGPSRoute(c.x, c.z - 45, c.name);
+    });
+  });
+
+  // 玩家即時定位點
+  const pLL = worldToLatLng(player.x, player.z);
+  playerMapMarker = L.circleMarker(pLL, {
+    radius: 9, color: '#ffffff', weight: 3, fillColor: '#22c55e', fillOpacity: 1
+  }).addTo(leafletMap).bindTooltip("📍 你的目前位置", { permanent: true, direction: 'bottom' });
+
+  // 單擊真實地圖設定 GPS 導航路線
+  let clickTimer = null;
+  leafletMap.on('click', (e) => {
+    clearTimeout(clickTimer);
+    clickTimer = setTimeout(() => {
+      const wPos = latLngToWorld(e.latlng.lat, e.latlng.lng);
+      computeGPSRoute(wPos.x, wPos.z);
+    }, 220);
+  });
+
+  // 雙擊真實地圖直接空降瞬移
+  leafletMap.on('dblclick', (e) => {
+    clearTimeout(clickTimer);
+    const wPos = latLngToWorld(e.latlng.lat, e.latlng.lng);
+    if (player.inVehicle) player.inVehicle.mesh.position.set(wPos.x, 0, wPos.z);
+    player.x = wPos.x; player.z = wPos.z;
+    syncLeafletRoute();
+    updateHUD();
+  });
+}
+
+function syncLeafletRoute() {
+  if (!leafletMap) return;
+  const pLL = worldToLatLng(player.x, player.z);
+  if (playerMapMarker) playerMapMarker.setLatLng(pLL);
+
+  if (routeMapPolyline) { leafletMap.removeLayer(routeMapPolyline); routeMapPolyline = null; }
+  if (destMapMarker) { leafletMap.removeLayer(destMapMarker); destMapMarker = null; }
+
+  if (activeNavRoute.length >= 2) {
+    const latLngs = activeNavRoute.map(pt => worldToLatLng(pt.x, pt.z));
+    routeMapPolyline = L.polyline(latLngs, { color: '#38bdf8', weight: 6, opacity: 0.95 }).addTo(leafletMap);
+    const destLL = latLngs[latLngs.length - 1];
+    destMapMarker = L.circleMarker(destLL, {
+      radius: 8, color: '#ffffff', weight: 2, fillColor: '#ef4444', fillOpacity: 1
+    }).addTo(leafletMap).bindTooltip(`🚩 導航終點：${navDestinationName}`, { permanent: true, direction: 'top' });
+  }
+}
+
+function toggleBigMap() {
+  const modal = document.getElementById('big-map-modal');
+  const willOpen = modal.style.display !== 'flex';
+  document.getElementById('side-panel').style.display = 'none';
+  modal.style.display = willOpen ? 'flex' : 'none';
+  updatePauseState();
+  if (willOpen) {
+    initLeafletMap();
+    setTimeout(() => {
+      leafletMap.invalidateSize();
+      syncLeafletRoute();
+    }, 60);
+  }
+}
+
+function openExternalGoogleMaps() {
+  const [lat, lng] = worldToLatLng(player.x, player.z);
+  window.open(`https://www.google.com/maps/@${lat.toFixed(5)},${lng.toFixed(5)},14z/data=!3m1!1e3`, '_blank');
+}
+
+const miniCtx = document.getElementById('minimap').getContext('2d');
+function drawMinimap() {
+  miniCtx.fillStyle = "#1e293b"; miniCtx.fillRect(0, 0, 150, 150);
+  miniCtx.save(); miniCtx.translate(75, 75); miniCtx.rotate(camYaw);
+  const s = 0.65;
+
+  miniCtx.strokeStyle = "#64748b";
+  miniCtx.lineCap = "round";
+  miniCtx.lineJoin = "round";
+  irregularRoadPolylines.forEach(poly => {
+    const p0 = poly.pts[0];
+    if (Math.abs(p0.x - player.x) > 900 && Math.abs(p0.z - player.z) > 900) return;
+    miniCtx.lineWidth = poly.width * s;
+    miniCtx.beginPath();
+    poly.pts.forEach((pt, idx) => {
+      const rx = (pt.x - player.x) * s;
+      const rz = (pt.z - player.z) * s;
+      if (idx === 0) miniCtx.moveTo(rx, rz);
+      else miniCtx.lineTo(rx, rz);
+    });
+    miniCtx.stroke();
+  });
+
+  miniCtx.fillStyle = "#0ea5e9";
+  colliders.forEach(c => {
+    if (Math.abs(c.minX - player.x) < 160 && Math.abs(c.minZ - player.z) < 160) {
+      miniCtx.fillRect((c.minX - player.x) * s, (c.minZ - player.z) * s, (c.maxX - c.minX) * s, (c.maxZ - c.minZ) * s);
+    }
+  });
+
+  if (activeNavRoute.length >= 2) {
+    miniCtx.strokeStyle = "#38bdf8";
+    miniCtx.lineWidth = 4;
+    miniCtx.beginPath();
+    activeNavRoute.forEach((pt, idx) => {
+      const rx = (pt.x - player.x) * s;
+      const rz = (pt.z - player.z) * s;
+      if (idx === 0) miniCtx.moveTo(rx, rz);
+      else miniCtx.lineTo(rx, rz);
+    });
+    miniCtx.stroke();
+  }
+
+  vehicles.forEach(v => {
+    if (!v.exploded && Math.abs(v.mesh.position.x - player.x) < 160 && Math.abs(v.mesh.position.z - player.z) < 160) {
+      miniCtx.fillStyle = v.isPolice ? "#ef4444" : "#facc15";
+      miniCtx.beginPath(); miniCtx.arc((v.mesh.position.x - player.x) * s, (v.mesh.position.z - player.z) * s, 3.5, 0, Math.PI * 2); miniCtx.fill();
+    }
+  });
+  footCops.forEach(c => {
+    if (c.alive && Math.abs(c.x - player.x) < 160 && Math.abs(c.z - player.z) < 160) {
+      miniCtx.fillStyle = "#3b82f6";
+      miniCtx.beginPath(); miniCtx.arc((c.x - player.x) * s, (c.z - player.z) * s, 3, 0, Math.PI * 2); miniCtx.fill();
+    }
+  });
+  miniCtx.restore();
+
+  miniCtx.fillStyle = "#fff";
+  miniCtx.beginPath(); miniCtx.moveTo(75, 68); miniCtx.lineTo(80, 80); miniCtx.lineTo(75, 77); miniCtx.lineTo(70, 80); miniCtx.closePath(); miniCtx.fill();
+}
+
+// =========================================================
+// 13. 主遊戲循環 (車輛彈性反彈物理、3 槍爆炸、警察包夾、教育模式)
+// =========================================================
+let tick = 0;
+function animate() {
+  requestAnimationFrame(animate);
+  if (!gameStarted || isPaused) { renderer.render(scene, camera); return; }
+  tick++;
+
+  // A. 動態視距串流優化
+  if (tick % 10 === 0) {
+    for (let i = 0; i < dynamicBuildings.length; i++) {
+      const b = dynamicBuildings[i];
+      b.mesh.visible = (Math.abs(b.x - player.x) < 460 && Math.abs(b.z - player.z) < 460);
+    }
+    for (let i = 0; i < dynamicRoadChunks.length; i++) {
+      const r = dynamicRoadChunks[i];
+      const range = r.isHighway ? 1600 : 550;
+      r.mesh.visible = (Math.abs(r.x - player.x) < range && Math.abs(r.z - player.z) < range);
+    }
+  }
+
+  // B. 玩家移動與駕駛
+  const upInput = keys['KeyW'] || keys['ArrowUp'] || joyVec.z < -0.2;
+  const downInput = keys['KeyS'] || keys['ArrowDown'] || joyVec.z > 0.2;
+  const leftInput = keys['KeyA'] || keys['ArrowLeft'] || joyVec.x < -0.2;
+  const rightInput = keys['KeyD'] || keys['ArrowRight'] || joyVec.x > 0.2;
+  const driftInput = keys['Space'];
+
+  if (!player.inVehicle) {
+    let mx = 0, mz = 0;
+    const fwdX = -Math.sin(camYaw), fwdZ = -Math.cos(camYaw);
+    const rgtX = Math.cos(camYaw), rgtZ = -Math.sin(camYaw);
+
+    if (upInput) { mx += fwdX; mz += fwdZ; }
+    if (downInput) { mx -= fwdX; mz -= fwdZ; }
+    if (leftInput) { mx -= rgtX; mz -= rgtZ; }
+    if (rightInput) { mx += rgtX; mz += rgtZ; }
+
+    if (mx !== 0 || mz !== 0) {
+      const len = Math.hypot(mx, mz);
+      const stepX = (mx / len) * player.speed;
+      const stepZ = (mz / len) * player.speed;
+      if (!checkWallCollision(player.x + stepX, player.z, 0.75)) player.x += stepX;
+      if (!checkWallCollision(player.x, player.z + stepZ, 0.75)) player.z += stepZ;
+      player.rotY = Math.atan2(mx, mz);
+    }
+    playerMesh.position.set(player.x, 0, player.z);
+    playerMesh.rotation.y = player.rotY;
+  } else {
+    const v = player.inVehicle;
+    if (upInput) v.speed = Math.min(v.maxSpeed, v.speed + 0.036);
+    else if (downInput) v.speed = Math.max(-v.maxSpeed * 0.4, v.speed - 0.038);
+    else v.speed *= 0.965;
+
+    const isDrifting = driftInput && Math.abs(v.speed) > 0.35 && (leftInput || rightInput);
+    document.getElementById('drift-badge').style.display = isDrifting ? 'block' : 'none';
+
+    if (Math.abs(v.speed) > 0.02) {
+      const dir = v.speed >= 0 ? 1 : -1;
+      const turnRate = isDrifting ? 0.075 : 0.042;
+      if (leftInput) v.mesh.rotation.y += turnRate * dir;
+      if (rightInput) v.mesh.rotation.y -= turnRate * dir;
+    }
+
+    const targetSlip = isDrifting ? (leftInput ? -0.35 : 0.35) : 0;
+    v.driftAngle += (targetSlip - v.driftAngle) * 0.15;
+    if (isDrifting) v.speed *= 0.992;
+
+    const moveHeading = v.mesh.rotation.y + v.driftAngle;
+    v.vx = Math.sin(moveHeading) * v.speed;
+    v.vz = Math.cos(moveHeading) * v.speed;
+  }
+
+  // C. 車輛彈性碰撞與真實反彈物理 (Rigid-Body Vehicle Bounce)
+  for (let i = 0; i < vehicles.length; i++) {
+    const v1 = vehicles[i];
+    if (v1.exploded) continue;
+
+    // 推進車輛位置
+    if (Math.abs(v1.vx) > 0.001 || Math.abs(v1.vz) > 0.001) {
+      const nx = v1.mesh.position.x + v1.vx;
+      const nz = v1.mesh.position.z + v1.vz;
+      if (!checkWallCollision(nx, nz, 1.4)) {
+        v1.mesh.position.x = nx;
+        v1.mesh.position.z = nz;
+      } else {
+        // 撞牆彈性反彈
+        v1.vx = -v1.vx * 0.55;
+        v1.vz = -v1.vz * 0.55;
+        v1.speed = -v1.speed * 0.45;
+      }
+      if (v1 !== player.inVehicle) {
+        v1.vx *= 0.92;
+        v1.vz *= 0.92;
+      }
+    }
+
+    // 車與車之間的彈性碰撞反彈檢測
+    for (let j = i + 1; j < vehicles.length; j++) {
+      const v2 = vehicles[j];
+      if (v2.exploded) continue;
+      const dx = v2.mesh.position.x - v1.mesh.position.x;
+      const dz = v2.mesh.position.z - v1.mesh.position.z;
+      const dist = Math.hypot(dx, dz);
+      const minSep = 3.4;
+
+      if (dist > 0.01 && dist < minSep) {
+        const nx = dx / dist;
+        const nz = dz / dist;
+        // 1. 分離重疊車身，防止穿模
+        const overlap = (minSep - dist) * 0.55;
+        if (!checkWallCollision(v1.mesh.position.x - nx * overlap, v1.mesh.position.z - nz * overlap, 1.3)) {
+          v1.mesh.position.x -= nx * overlap;
+          v1.mesh.position.z -= nz * overlap;
+        }
+        if (!checkWallCollision(v2.mesh.position.x + nx * overlap, v2.mesh.position.z + nz * overlap, 1.3)) {
+          v2.mesh.position.x += nx * overlap;
+          v2.mesh.position.z += nz * overlap;
+        }
+
+        // 2. 計算相對速度並施加真實動量反彈衝量
+        const rvx = v2.vx - v1.vx;
+        const rvz = v2.vz - v1.vz;
+        const velAlongNormal = rvx * nx + rvz * nz;
+
+        if (velAlongNormal < 0) {
+          const restitution = 0.85; // 彈性係數
+          const impulse = -(1 + restitution) * velAlongNormal * 0.65;
+          v1.vx -= impulse * nx;
+          v1.vz -= impulse * nz;
+          v2.vx += impulse * nx;
+          v2.vz += impulse * nz;
+          v1.speed *= -0.45;
+          v2.speed *= -0.45;
+        } else {
+          // 靜態擦撞也給予彈開推力
+          v1.vx -= nx * 0.25;
+          v1.vz -= nz * 0.25;
+          v2.vx += nx * 0.25;
+          v2.vz += nz * 0.25;
+        }
+      }
+    }
+  }
+
+  if (player.inVehicle) {
+    player.x = player.inVehicle.mesh.position.x;
+    player.z = player.inVehicle.mesh.position.z;
+    camYaw = player.inVehicle.mesh.rotation.y + Math.PI;
+    document.getElementById('speed-num').innerText = Math.round(Math.abs(player.inVehicle.speed) * 165);
+  }
+
+  // D. 更新爆炸火球特效
+  for (let i = explosions.length - 1; i >= 0; i--) {
+    const ex = explosions[i];
+    ex.scale += 0.35;
+    ex.life--;
+    ex.mesh.scale.set(ex.scale, ex.scale, ex.scale);
+    ex.mesh.material.opacity = ex.life / 28;
+    if (ex.life <= 0) { scene.remove(ex.mesh); explosions.splice(i, 1); }
+  }
+
+  if (activeNavRoute.length >= 2 && tick % 8 === 0) {
+    updateNavStatusHUD();
+    rebuild3DNavLine();
+  }
+
+  // E. 互動提示
+  const promptEl = document.getElementById('interact-prompt');
+  nearVehicle = null; nearStore = null;
+  if (!player.inVehicle) {
+    let minD = 6.0;
+    vehicles.forEach(v => {
+      if (v.exploded) return;
+      const d = Math.hypot(v.mesh.position.x - player.x, v.mesh.position.z - player.z);
+      if (d < minD) { minD = d; nearVehicle = v; }
+    });
+    enterableStores.forEach(st => {
+      if (Math.hypot(st.counterX - player.x, st.counterZ - player.z) < 4.5) nearStore = st;
+    });
+
+    if (nearStore) {
+      promptEl.style.display = 'flex';
+      document.getElementById('interact-label').innerText = `進入 7-TWELVE ${nearStore.name}`;
+    } else if (nearVehicle) {
+      promptEl.style.display = 'flex';
+      document.getElementById('interact-label').innerText = gameMode === 'edu' ? `搭乘 ${nearVehicle.name}` : `搶 ${nearVehicle.name}`;
+    } else {
+      promptEl.style.display = 'none';
+    }
+  } else {
+    promptEl.style.display = 'none';
+  }
+
+  // F. 強化警車追捕系統 (僅自由模式)
+  if (gameMode === 'free') {
+    vehicles.forEach((v, idx) => {
+      if (v === player.inVehicle || v.exploded) return;
+      if (v.isPolice) {
+        if (v.mesh.userData.siren) {
+          v.mesh.userData.siren.material.color.setHex(Math.floor(tick / 8) % 2 === 0 ? 0xef4444 : 0x3b82f6);
+        }
+        if (!v.hasOfficer || player.wanted === 0) return;
+
+        const dx = player.x - v.mesh.position.x;
+        const dz = player.z - v.mesh.position.z;
+        const dist = Math.hypot(dx, dz);
+        const ang = Math.atan2(dx, dz);
+        v.mesh.rotation.y = ang;
+
+        if (dist > 13) {
+          const spd = 0.38 + player.wanted * 0.035;
+          v.vx = Math.sin(ang) * spd;
+          v.vz = Math.cos(ang) * spd;
+        } else {
+          v.vx = 0; v.vz = 0;
+          v.hasOfficer = false;
+          spawnFootCop(v.mesh.position.x + 2.6, v.mesh.position.z + 1.5);
+          spawnFootCop(v.mesh.position.x - 2.6, v.mesh.position.z - 1.5);
+        }
+      }
+    });
+
+    // 下車特警包夾與精準射擊
+    footCops.forEach((c, cIdx) => {
+      if (!c.alive) return;
+      const dx = player.x - c.x;
+      const dz = player.z - c.z;
+      const dist = Math.hypot(dx, dz);
+      const ang = Math.atan2(dx, dz) + ((cIdx % 2 === 0 ? 1 : -1) * 0.28);
+      c.mesh.rotation.y = Math.atan2(dx, dz);
+
+      if (dist > 8.0) {
+        const nx = c.x + Math.sin(ang) * 0.2;
+        const nz = c.z + Math.cos(ang) * 0.2;
+        if (!checkWallCollision(nx, nz, 0.6)) { c.x = nx; c.z = nz; }
+        c.mesh.position.set(c.x, 0, c.z);
+      }
+      if (dist < 38) {
+        c.shootTimer--;
+        if (c.shootTimer <= 0) {
+          c.shootTimer = Math.max(28, 55 - player.wanted * 5);
+          const shootAng = Math.atan2(dx, dz);
+          const eb = new THREE.Mesh(new THREE.SphereGeometry(0.18), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
+          eb.position.set(c.x, 1.5, c.z);
+          scene.add(eb);
+          enemyBullets.push({ mesh: eb, vx: Math.sin(shootAng) * 1.75, vz: Math.cos(shootAng) * 1.75, life: 45 });
+        }
+      }
+    });
+
+    // G. 子彈命中判定 (車子被槍打 3 下會爆炸、路人與警察多血量判定)
+    for (let i = enemyBullets.length - 1; i >= 0; i--) {
+      const eb = enemyBullets[i];
+      eb.mesh.position.x += eb.vx; eb.mesh.position.z += eb.vz; eb.life--;
+      if (Math.hypot(eb.mesh.position.x - player.x, eb.mesh.position.z - player.z) < 1.4) {
+        if (!isGodMode) {
+          player.hp -= 7;
+          updateHUD();
+          if (player.hp <= 0) {
+            alert("【 WASTED 慘遭全台灣警力擊倒 】");
+            player.hp = 100; buyItem('clear', 0);
+          }
+        }
+        eb.life = 0;
+      }
+      if (eb.life <= 0) { scene.remove(eb.mesh); enemyBullets.splice(i, 1); }
+    }
+
+    for (let i = bullets.length - 1; i >= 0; i--) {
+      const b = bullets[i];
+      b.mesh.position.x += b.vx; b.mesh.position.z += b.vz; b.life--;
+
+      // 1. 檢測是否擊中車輛 (打 3 下爆炸！)
+      for (let vIdx = 0; vIdx < vehicles.length; vIdx++) {
+        const v = vehicles[vIdx];
+        if (v.exploded || v === player.inVehicle) continue;
+        if (Math.hypot(b.mesh.position.x - v.mesh.position.x, b.mesh.position.z - v.mesh.position.z) < 2.2) {
+          v.hp--;
+          b.life = 0;
+          addWanted(1);
+          if (v.hp === 2) {
+            v.mesh.children[0].material.color.setHex(0x64748b); // 第 1 槍受損變色
+          } else if (v.hp === 1) {
+            v.mesh.children[0].material.color.setHex(0x ea580c); // 第 2 槍起火警告
+          } else if (v.hp <= 0) {
+            // 第 3 槍觸發爆炸！
+            v.exploded = true;
+            v.mesh.children[0].material.color.setHex(0x090d16);
+            triggerExplosion(v.mesh.position.x, v.mesh.position.z);
+            addWanted(2);
+          }
+          break;
+        }
+      }
+
+      // 2. 檢測是否擊中路人
+      if (b.life > 0) {
+        npcs.forEach(n => {
+          if (n.alive && Math.hypot(b.mesh.position.x - n.mesh.position.x, b.mesh.position.z - n.mesh.position.z) < 1.4) {
+            n.hp -= b.dmg;
+            b.life = 0;
+            if (n.hp <= 0) {
+              n.alive = false; n.mesh.rotation.x = Math.PI / 2; n.bubble.style.display = 'none';
+              player.money += 400;
+            }
+            addWanted(1); updateHUD();
+          }
+        });
+      }
+
+      // 3. 檢測是否擊中警察
+      if (b.life > 0) {
+        footCops.forEach(c => {
+          if (c.alive && Math.hypot(b.mesh.position.x - c.x, b.mesh.position.z - c.z) < 1.4) {
+            c.hp -= b.dmg;
+            b.life = 0;
+            if (c.hp <= 0) { c.alive = false; c.mesh.rotation.x = Math.PI / 2; }
+            addWanted(1); updateHUD();
+          }
+        });
+      }
+
+      if (b.life <= 0) { scene.remove(b.mesh); bullets.splice(i, 1); }
+    }
+  }
+
+  // H. 任務判定
+  missionRing.rotation.z += 0.04;
+  if (!activeMission) {
+    const m = missions[0];
+    if (Math.hypot(player.x - m.startX, player.z - m.startZ) < 5.0) {
+      activeMission = m;
+      document.getElementById('mission-title').innerText = m.title;
+      document.getElementById('mission-desc').innerText = m.desc;
+      missionRing.position.set(m.endX, 0.22, m.endZ);
+      missionRing.material.color.setHex(0x4ade80);
+      computeGPSRoute(m.endX, m.endZ, "台北 101 大樓 (任務終點)");
+    }
+  } else if (Math.hypot(player.x - activeMission.endX, player.z - activeMission.endZ) < 7.0) {
+    alert(`🎉 環遊臺灣任務完成：【${activeMission.title}】\n獲得報酬 NT$ ${activeMission.reward.toLocaleString()}！`);
+    player.money += activeMission.reward;
+    activeMission = null;
+    clearNavRoute();
+    missionRing.position.set(missions[0].startX, 0.22, missions[0].startZ);
+    missionRing.material.color.setHex(0xfacc15);
+    document.getElementById('mission-title').innerText = "📌 環遊臺灣：全島探索";
+    document.getElementById('mission-desc').innerText = "任務已完成！按 M 打開真實衛星地圖規劃下一段環島路線。";
+    updateHUD();
+  }
+
+  // I. 路人走動與氣泡投影
+  npcs.forEach(n => {
+    if (!n.alive) return;
+    if (Math.abs(n.mesh.position.x - player.x) > 80 || Math.abs(n.mesh.position.z - player.z) > 80) {
+      n.bubble.style.display = 'none';
+      return;
+    }
+    const nx = n.mesh.position.x + Math.sin(n.dir) * 0.04;
+    const nz = n.mesh.position.z + Math.cos(n.dir) * 0.04;
+    if (!checkWallCollision(nx, nz, 0.6)) { n.mesh.position.x = nx; n.mesh.position.z = nz; }
+    else n.dir += Math.PI;
+    n.mesh.rotation.y = n.dir;
+
+    const headPos = new THREE.Vector3(n.mesh.position.x, 2.9, n.mesh.position.z);
+    const dCam = headPos.distanceTo(camera.position);
+    headPos.project(camera);
+    if (headPos.z < 1 && dCam < 38) {
+      n.bubble.style.display = 'block';
+      n.bubble.style.left = ((headPos.x * 0.5 + 0.5) * window.innerWidth) + 'px';
+      n.bubble.style.top = ((-(headPos.y * 0.5) + 0.5) * window.innerHeight) + 'px';
+    } else n.bubble.style.display = 'none';
+  });
+
+  // J. 第三人稱追尾攝影機
+  const cDist = player.inVehicle ? 11.5 : 8.2;
+  const cHeight = player.inVehicle ? 4.8 : 3.6;
+  camera.position.x = player.x + Math.sin(camYaw) * cDist;
+  camera.position.z = player.z + Math.cos(camYaw) * cDist;
+  camera.position.y = cHeight + Math.sin(camPitch) * 4.2;
+  camera.lookAt(player.x, 1.8, player.z);
+
+  if (tick % 15 === 0) updateHUD();
+  drawMinimap();
+  renderer.render(scene, camera);
+}
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+animate();
+</script>
+</body>
+</html>
