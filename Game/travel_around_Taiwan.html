@@ -905,8 +905,8 @@ Object.values(TAIWAN_CITIES).forEach((c, idx) => {
 
   // 高密度連續填充整個半徑 230m 都市街區 (絕無空洞)
   const bCols = [0xe2e8f0, 0xfde68a, 0xfed7aa, 0xcbd5e1, 0xdbeafe, 0xf3e8ff];
-  for (let gx = -210; gx <= 210; gx += 26) {
-    for (let gz = -210; gz <= 210; gz += 26) {
+  for (let gx = -210; gx <= 210; gx += ) {
+    for (let gz = -210; gz <= 210; gz += 52) {
       if (Math.hypot(gx, gz) > 225) continue;
       const bx = c.x + gx + ((gz % 52) * 0.15);
       const bz = c.z + gz + ((gx % 52) * 0.15);
