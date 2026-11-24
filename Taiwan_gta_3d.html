@@ -3,7 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>台灣 GTA 3D：極致不規則曲線路網 & 衛星導航世界</title>
+<title>環遊臺灣 3D — © 2026 Larry and Alan</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; -webkit-user-select: none; font-family: 'Microsoft JhengHei', sans-serif; }
   body { overflow: hidden; background: #07192c; touch-action: none; }
@@ -11,45 +14,65 @@
 
   #start-screen {
     position: fixed; inset: 0; z-index: 1000;
-    background: linear-gradient(135deg, rgba(10,20,38,0.95), rgba(20,35,55,0.92)),
+    background: linear-gradient(135deg, rgba(8,18,34,0.96), rgba(15,35,58,0.93)),
                 radial-gradient(circle at top right, #0284c7, transparent 55%);
     display: flex; flex-direction: column; align-items: center; justify-content: center;
-    color: #fff; padding: 14px; text-align: center; backdrop-filter: blur(8px);
+    color: #fff; padding: 14px; text-align: center; backdrop-filter: blur(10px);
   }
   .game-logo {
-    font-size: clamp(24px, 4.6vw, 46px); font-weight: 900; letter-spacing: 3px;
+    font-size: clamp(28px, 5vw, 52px); font-weight: 900; letter-spacing: 4px;
     background: linear-gradient(90deg, #38bdf8, #4ade80, #facc15);
     -webkit-background-clip: text; -webkit-text-fill-color: transparent;
     margin-bottom: 4px;
   }
-  .game-sub { font-size: 13px; color: #cbd5e1; margin-bottom: 16px; }
+  .game-sub { font-size: 13px; color: #cbd5e1; margin-bottom: 12px; }
   .menu-card {
-    background: rgba(15, 23, 42, 0.92); border: 1px solid rgba(255,255,255,0.22);
-    border-radius: 18px; padding: 18px; width: 100%; max-width: 620px;
+    background: rgba(15, 23, 42, 0.94); border: 1px solid rgba(255,255,255,0.22);
+    border-radius: 18px; padding: 16px; width: 100%; max-width: 650px;
     box-shadow: 0 20px 50px rgba(0,0,0,0.85);
   }
-  .spawn-title { font-size: 14px; color: #94a3b8; margin-bottom: 10px; font-weight: bold; }
-  .spawn-btns { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px; }
+
+  .mode-selector { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  .mode-card {
+    padding: 10px; border-radius: 12px; border: 2px solid #334155;
+    background: #1e293b; cursor: pointer; text-align: left; transition: 0.2s;
+  }
+  .mode-card.active-free { border-color: #f59e0b; background: rgba(245, 158, 11, 0.18); }
+  .mode-card.active-edu { border-color: #10b981; background: rgba(16, 185, 129, 0.22); }
+  .mode-card h4 { font-size: 14px; margin-bottom: 3px; color: #fff; }
+  .mode-card p { font-size: 11px; color: #cbd5e1; line-height: 1.35; }
+
+  .spawn-title { font-size: 13px; color: #94a3b8; margin-bottom: 6px; font-weight: bold; text-align: left; }
+  .spawn-btns { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; margin-bottom: 12px; }
   .spawn-btn {
-    padding: 10px 4px; border-radius: 10px; border: 2px solid #334155;
+    padding: 8px 4px; border-radius: 10px; border: 2px solid #334155;
     background: #1e293b; color: #fff; cursor: pointer; transition: 0.2s;
   }
   .spawn-btn.selected { border-color: #38bdf8; background: rgba(56, 189, 248, 0.25); box-shadow: 0 0 12px rgba(56,189,248,0.45); }
-  .spawn-btn h3 { font-size: 14px; margin-bottom: 2px; color: #f8fafc; }
+  .spawn-btn h3 { font-size: 13px; margin-bottom: 2px; color: #f8fafc; }
   .spawn-btn p { font-size: 10px; color: #94a3b8; }
 
   .god-toggle {
     display: flex; align-items: center; justify-content: space-between;
-    background: rgba(250, 204, 21, 0.15); border: 1px solid rgba(250, 204, 21, 0.45);
-    padding: 10px 14px; border-radius: 10px; margin-bottom: 14px; cursor: pointer;
+    background: rgba(250, 204, 21, 0.14); border: 1px solid rgba(250, 204, 21, 0.45);
+    padding: 8px 14px; border-radius: 10px; margin-bottom: 12px; cursor: pointer;
   }
   .god-toggle span { font-size: 13px; font-weight: bold; color: #facc15; }
   .god-toggle input { width: 18px; height: 18px; accent-color: #facc15; cursor: pointer; }
 
   .start-btn {
-    width: 100%; padding: 13px; border: none; border-radius: 10px;
+    width: 100%; padding: 12px; border: none; border-radius: 10px;
     background: linear-gradient(90deg, #0284c7, #10b981); color: #fff;
     font-size: 17px; font-weight: 900; cursor: pointer; letter-spacing: 2px;
+  }
+
+  .copyright-menu {
+    margin-top: 12px; font-size: 13px; color: #94a3b8; letter-spacing: 0.5px;
+  }
+  #copyright-hud {
+    position: fixed; bottom: 8px; left: 50%; transform: translateX(-50%);
+    z-index: 25; font-size: 12px; color: rgba(203, 213, 225, 0.85);
+    text-shadow: 1px 1px 3px rgba(0,0,0,0.9); pointer-events: none; letter-spacing: 0.4px;
   }
 
   #top-right-hud {
@@ -57,52 +80,63 @@
     text-shadow: 1px 2px 5px rgba(0,0,0,0.9); pointer-events: none; z-index: 20;
   }
   .time-weather { font-size: 15px; font-weight: bold; color: #f8fafc; }
-  .money { font-size: 25px; font-weight: 900; color: #facc15; margin-top: 2px; }
-  .stars { font-size: 21px; letter-spacing: 3px; color: rgba(255,255,255,0.3); }
+  .money { font-size: 24px; font-weight: 900; color: #facc15; margin-top: 2px; }
+  .stars { font-size: 20px; letter-spacing: 3px; color: rgba(255,255,255,0.3); }
   .stars .active { color: #ef4444; text-shadow: 0 0 10px #ef4444; }
   .weapon-badge {
     display: inline-block; margin-top: 4px; padding: 4px 10px; border-radius: 6px;
-    background: rgba(15,23,42,0.82); border: 1px solid rgba(255,255,255,0.25);
-    font-size: 13px; color: #38bdf8; font-weight: bold;
+    background: rgba(15,23,42,0.85); border: 1px solid rgba(255,255,255,0.25);
+    font-size: 12px; color: #38bdf8; font-weight: bold;
   }
 
   #mission-hud {
     position: fixed; top: 14px; left: 16px; z-index: 20;
-    background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(6px);
+    background: rgba(15, 23, 42, 0.88); backdrop-filter: blur(6px);
     padding: 10px 14px; border-radius: 10px; border-left: 4px solid #f59e0b;
-    color: #fff; font-size: 13px; max-width: 330px; pointer-events: none;
+    color: #fff; font-size: 13px; max-width: 345px; pointer-events: none;
   }
   #mission-title { font-weight: 900; color: #facc15; font-size: 14px; margin-bottom: 3px; }
   #mission-desc { color: #e2e8f0; line-height: 1.4; }
   #nav-status {
     margin-top: 6px; padding: 4px 8px; border-radius: 6px;
-    background: rgba(56, 189, 248, 0.2); border: 1px solid #38bdf8;
+    background: rgba(56, 189, 248, 0.22); border: 1px solid #38bdf8;
     color: #7dd3fc; font-weight: bold; font-size: 12px; display: none;
   }
-  .pc-hint { margin-top: 6px; font-size: 11px; color: #94a3b8; line-height: 1.5; }
+  .pc-hint { margin-top: 6px; font-size: 11px; color: #94a3b8; line-height: 1.45; }
+
+  #edu-card {
+    position: fixed; bottom: 185px; left: 18px; z-index: 25;
+    width: 320px; background: rgba(6, 78, 59, 0.92); border: 2px solid #34d399;
+    border-radius: 14px; padding: 12px 15px; color: #fff; display: none;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.75); pointer-events: none;
+  }
+  #edu-card h4 { font-size: 15px; color: #6ee7b7; margin-bottom: 4px; }
+  #edu-card p { font-size: 12px; color: #ecfdf5; line-height: 1.5; }
 
   #speedometer {
-    position: fixed; bottom: 22px; right: 22px; z-index: 25;
-    background: rgba(15, 23, 42, 0.86); border: 2px solid #38bdf8;
-    border-radius: 16px; padding: 12px 20px; text-align: right; color: #fff;
+    position: fixed; bottom: 26px; right: 22px; z-index: 25;
+    background: rgba(15, 23, 42, 0.88); border: 2px solid #38bdf8;
+    border-radius: 16px; padding: 10px 18px; text-align: right; color: #fff;
     box-shadow: 0 6px 20px rgba(0,0,0,0.75); display: none; pointer-events: none;
   }
-  #speed-num { font-size: 38px; font-weight: 900; color: #4ade80; line-height: 1; font-variant-numeric: tabular-nums; }
-  #speed-unit { font-size: 13px; color: #94a3b8; font-weight: bold; margin-top: 2px; }
+  #speed-num { font-size: 36px; font-weight: 900; color: #4ade80; line-height: 1; font-variant-numeric: tabular-nums; }
+  #speed-unit { font-size: 12px; color: #94a3b8; font-weight: bold; margin-top: 2px; }
+  #car-hp-txt { font-size: 11px; color: #fbbf24; margin-top: 3px; font-weight: bold; }
+  #elev-txt { font-size: 11px; color: #38bdf8; margin-top: 2px; font-weight: bold; }
   #drift-badge {
     display: none; margin-top: 4px; background: #f59e0b; color: #000;
     font-size: 11px; font-weight: 900; padding: 2px 8px; border-radius: 4px; text-align: center;
   }
 
   #minimap-wrap {
-    position: fixed; bottom: 18px; left: 18px; z-index: 20;
-    width: 150px; height: 150px; border-radius: 50%;
+    position: fixed; bottom: 22px; left: 18px; z-index: 20;
+    width: 146px; height: 146px; border-radius: 50%;
     border: 3px solid rgba(255,255,255,0.85); overflow: hidden;
     box-shadow: 0 4px 18px rgba(0,0,0,0.8); background: #1e293b;
   }
   #minimap { width: 100%; height: 100%; }
   #hp-wrap {
-    position: fixed; bottom: 8px; left: 18px; width: 150px; height: 7px; z-index: 20;
+    position: fixed; bottom: 10px; left: 18px; width: 146px; height: 7px; z-index: 20;
     background: rgba(0,0,0,0.8); border-radius: 4px; overflow: hidden; border: 1px solid #475569;
   }
   #hp-bar { width: 100%; height: 100%; background: #22c55e; transition: width 0.2s; }
@@ -115,47 +149,42 @@
 
   #interact-prompt {
     position: fixed; bottom: 26%; left: 50%; transform: translateX(-50%); z-index: 30;
-    background: rgba(0,0,0,0.85); color: #fff; padding: 8px 16px; border-radius: 8px;
-    font-size: 15px; font-weight: bold; border: 1px solid rgba(255,255,255,0.3);
-    display: none; align-items: center; gap: 8px;
+    background: rgba(0,0,0,0.9); color: #fff; padding: 9px 18px; border-radius: 10px;
+    font-size: 15px; font-weight: bold; border: 1px solid #38bdf8;
+    display: none; align-items: center; gap: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.7);
   }
-  .key-cap { background: #fff; color: #000; padding: 2px 7px; border-radius: 4px; font-weight: 900; }
+  .key-cap { background: #38bdf8; color: #000; padding: 2px 8px; border-radius: 4px; font-weight: 900; }
 
+  /* 雙模式切換大地圖視窗 (按 M 開啟) */
   #big-map-modal {
     position: fixed; inset: 0; z-index: 200; background: rgba(5, 12, 24, 0.96);
     display: none; flex-direction: column; align-items: center; justify-content: center; padding: 10px;
   }
   #big-map-header {
-    width: 100%; max-width: 720px; display: flex; justify-content: space-between; align-items: center;
-    color: #fff; margin-bottom: 8px; font-size: 13px; gap: 8px; flex-wrap: wrap;
+    width: 100%; max-width: 960px; display: flex; justify-content: space-between; align-items: center;
+    color: #fff; margin-bottom: 8px; font-size: 13px; gap: 6px; flex-wrap: wrap;
   }
+  .map-btn-grp { display: flex; gap: 6px; flex-wrap: wrap; }
+  .m-tab-btn {
+    padding: 6px 12px; border: 1px solid rgba(255,255,255,0.3); border-radius: 6px;
+    background: #1e293b; color: #fff; font-weight: bold; cursor: pointer; font-size: 12px;
+  }
+  .m-tab-btn.active { background: #0284c7; border-color: #38bdf8; }
   .map-wrap-box {
-    position: relative; height: 82vh; width: auto; max-width: 95vw; aspect-ratio: 560 / 880;
+    position: relative; width: 95vw; max-width: 960px; height: 79vh;
     border: 2px solid #38bdf8; border-radius: 12px; overflow: hidden;
     box-shadow: 0 0 35px rgba(2, 132, 199, 0.5); background: #0a2540;
   }
-  #big-map-canvas {
-    width: 100%; height: 100%; cursor: grab; display: block;
-  }
-  #big-map-canvas:active { cursor: grabbing; }
-  .map-zoom-controls {
-    position: absolute; top: 12px; right: 12px; display: flex; flex-direction: column; gap: 6px; z-index: 10;
-  }
-  .zoom-btn {
-    width: 38px; height: 38px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.35);
-    background: rgba(15, 23, 42, 0.9); color: #fff; font-size: 18px; font-weight: 900;
-    cursor: pointer; display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.6);
-  }
-  .zoom-btn:hover { background: #0284c7; }
+  #leaflet-map { width: 100%; height: 100%; z-index: 2; }
+  #game-vector-canvas { width: 100%; height: 100%; display: none; cursor: grab; background: #091d36; }
   .map-legend {
-    position: absolute; bottom: 10px; left: 10px; background: rgba(15, 23, 42, 0.85);
-    border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 6px 10px;
-    color: #e2e8f0; font-size: 11px; pointer-events: none;
+    position: absolute; bottom: 12px; left: 12px; z-index: 999; background: rgba(15, 23, 42, 0.9);
+    border: 1px solid rgba(255,255,255,0.25); border-radius: 8px; padding: 6px 12px;
+    color: #e2e8f0; font-size: 12px; pointer-events: none;
   }
 
   #side-panel {
-    position: fixed; right: 16px; bottom: 110px; width: 290px; z-index: 210;
+    position: fixed; right: 16px; bottom: 110px; width: 300px; z-index: 210;
     background: rgba(15, 23, 42, 0.96); border: 2px solid #38bdf8; border-radius: 20px;
     padding: 16px; color: #fff; display: none; box-shadow: 0 10px 30px rgba(0,0,0,0.85);
     max-height: 76vh; overflow-y: auto;
@@ -195,68 +224,89 @@
     pointer-events: none; transform: translate(-50%, -100%); white-space: nowrap; z-index: 15;
   }
 </style>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
 
 <div id="pause-banner">⏸ 遊戲時間已暫停</div>
 
+<!-- 開場主選單：《環遊臺灣 3D》 -->
 <div id="start-screen">
-  <div class="game-logo">🇹🇼 台灣 GTA 3D：極致不規則曲線路網</div>
-  <div class="game-sub">Catmull-Rom 真實彎道公路 • 圓環與不規則街廓 • 彎道貼合 GPS 導航</div>
+  <div class="game-logo">🇹🇼 環遊臺灣 3D</div>
+  <div class="game-sub">立體高架國道交流道 • 真實衛星 / 遊戲戰術雙地圖 • 12 項環島任務</div>
   <div class="menu-card">
-    <div class="spawn-title">📍 請選擇出生縣市起點：</div>
-    <div class="spawn-btns">
-      <div class="spawn-btn selected" id="btn-yilan" onclick="selectCity('yilan')">
-        <h3>🏮 宜蘭羅東</h3>
-        <p>羅東圓環、九彎十八拐</p>
+    <div class="spawn-title">🎮 請選擇遊玩模式：</div>
+    <div class="mode-selector">
+      <div class="mode-card active-free" id="mode-free" onclick="selectMode('free')">
+        <h4>🔥 自由動作模式</h4>
+        <p>完整開放世界：可搶車、上高架國道、警匪追逐、車輛碰撞反彈、高速撞牆與 3 槍爆炸。</p>
       </div>
-      <div class="spawn-btn" id="btn-taipei" onclick="selectCity('taipei')">
-        <h3>🏙️ 雙北都會</h3>
-        <p>台北101、淡水河彎道</p>
-      </div>
-      <div class="spawn-btn" id="btn-taoyuan" onclick="selectCity('taoyuan')">
-        <h3>✈️ 桃園新竹</h3>
-        <p>五楊高架弧線、竹科</p>
-      </div>
-      <div class="spawn-btn" id="btn-taichung" onclick="selectCity('taichung')">
-        <h3>🎡 台中彰化</h3>
-        <p>台灣大道彎道、八卦山</p>
-      </div>
-      <div class="spawn-btn" id="btn-nantou" onclick="selectCity('nantou')">
-        <h3>🏞️ 南投日月潭</h3>
-        <p>環湖公路、埔里山路</p>
-      </div>
-      <div class="spawn-btn" id="btn-chiayi" onclick="selectCity('chiayi')">
-        <h3>🚂 雲林嘉義</h3>
-        <p>噴水圓環、阿里山公路</p>
-      </div>
-      <div class="spawn-btn" id="btn-tainan" onclick="selectCity('tainan')">
-        <h3>🏯 台南高雄</h3>
-        <p>七圓環放射街廓、愛河</p>
-      </div>
-      <div class="spawn-btn" id="btn-hualien" onclick="selectCity('hualien')">
-        <h3>⛰️ 花蓮台東</h3>
-        <p>蘇花懸崖髮夾彎、海岸線</p>
+      <div class="mode-card" id="mode-edu" onclick="selectMode('edu')">
+        <h4>🎓 教育觀光模式</h4>
+        <p>和平環島地理導覽：無武器、無通緝，靠近全台古蹟地標自動顯示歷史地理知識解說。</p>
       </div>
     </div>
 
-    <label class="god-toggle">
+    <div class="spawn-title">📍 請選擇出發縣市起點：</div>
+    <div class="spawn-btns">
+      <div class="spawn-btn selected" id="btn-yilan" onclick="selectCity('yilan')">
+        <h3>🏮 宜蘭羅東</h3>
+        <p>國五交流道、羅東夜市</p>
+      </div>
+      <div class="spawn-btn" id="btn-taipei" onclick="selectCity('taipei')">
+        <h3>🏙️ 雙北都會</h3>
+        <p>台北101、國一高架</p>
+      </div>
+      <div class="spawn-btn" id="btn-taoyuan" onclick="selectCity('taoyuan')">
+        <h3>✈️ 桃園新竹</h3>
+        <p>桃園機場、竹科交流道</p>
+      </div>
+      <div class="spawn-btn" id="btn-taichung" onclick="selectCity('taichung')">
+        <h3>🎡 台中彰化</h3>
+        <p>歌劇院、八卦山</p>
+      </div>
+      <div class="spawn-btn" id="btn-nantou" onclick="selectCity('nantou')">
+        <h3>🏞️ 南投日月潭</h3>
+        <p>國六山線、日月潭</p>
+      </div>
+      <div class="spawn-btn" id="btn-chiayi" onclick="selectCity('chiayi')">
+        <h3>🚂 雲林嘉義</h3>
+        <p>斗六、嘉義噴水圓環</p>
+      </div>
+      <div class="spawn-btn" id="btn-tainan" onclick="selectCity('tainan')">
+        <h3>🏯 台南高雄</h3>
+        <p>赤崁樓、高雄85大樓</p>
+      </div>
+      <div class="spawn-btn" id="btn-hualien" onclick="selectCity('hualien')">
+        <h3>⛰️ 花蓮台東</h3>
+        <p>太魯閣、花東縱谷</p>
+      </div>
+    </div>
+
+    <label class="god-toggle" id="god-toggle-row">
       <span>⚡ 無敵神模式 (不死 / 無限子彈 / 無限金錢)</span>
       <input type="checkbox" id="god-mode-check">
     </label>
 
-    <button class="start-btn" onclick="startGame()">進入極致不規則路網台灣</button>
+    <button class="start-btn" onclick="startGame()">進入《環遊臺灣 3D》</button>
+    <div class="copyright-menu">© 2026 Larry and Alan. All rights reserved.</div>
   </div>
 </div>
 
+<!-- 左上角任務與教育導覽 HUD -->
 <div id="mission-hud">
-  <div id="mission-title">📌 目前任務：全台灣不規則公路探索</div>
-  <div id="mission-desc">按 M 打開台灣衛星地圖（可滾輪放大看真實彎道與圓環），點擊任意地點即沿彎道規劃導航！</div>
+  <div id="mission-title">📌 環遊臺灣：自由探索中</div>
+  <div id="mission-desc">走到各縣市黃色光圈按 <b>E</b> 接取任務！按 <b>M</b> 可切換「真實衛星圖」與「遊戲戰術公路圖」。</div>
   <div id="nav-status">🧭 GPS 導航中：剩餘 0.0 km</div>
-  <div class="pc-hint">WASD / 方向鍵：移動開車 | Space：手煞車甩尾<br>F：搶車/進超商 | M：衛星地圖 | T：免費手機 | Tab：換武器</div>
+  <div class="pc-hint" id="control-hint">WASD / 方向鍵：移動開車 | Space：甩尾<br>E：上車/接任務/進超商 | M：雙模式地圖 | T：手機 | Tab：換武器</div>
 </div>
 
+<!-- 教育模式古蹟知識彈窗 -->
+<div id="edu-card">
+  <h4 id="edu-title">🏛️ 地標地理小百科</h4>
+  <p id="edu-body">靠近各縣市知名地標時，這裡會顯示當地的歷史與地理知識介紹。</p>
+</div>
+
+<!-- 右上角 HUD -->
 <div id="top-right-hud">
   <div class="time-weather" id="weather-hud">☀️ 14:24 &nbsp; 29°C &nbsp; 宜蘭縣羅東鎮</div>
   <div class="money">NT$ <span id="money-val">2,000</span></div>
@@ -264,50 +314,58 @@
   <div class="weapon-badge" id="weapon-hud">武器：空手 (拳頭)</div>
 </div>
 
+<!-- 右下角數位時速表 -->
 <div id="speedometer">
   <div id="speed-num">0</div>
   <div id="speed-unit">KM/H</div>
+  <div id="car-hp-txt">車身耐久：❤️❤️❤️ (3/3)</div>
+  <div id="elev-txt">路段：平面市區道路</div>
   <div id="drift-badge">🔥 DRIFT 甩尾中</div>
 </div>
 
-<div id="interact-prompt">按 <span class="key-cap">F</span> <span id="interact-label">搶廂型車</span></div>
+<!-- 互動提示 (統一按 E) -->
+<div id="interact-prompt">按 <span class="key-cap">E</span> <span id="interact-label">上車</span></div>
 
-<div id="minimap-wrap"><canvas id="minimap" width="150" height="150"></canvas></div>
+<!-- 小地圖、血條與底部版權標示 -->
+<div id="minimap-wrap"><canvas id="minimap" width="146" height="146"></canvas></div>
 <div id="hp-wrap"><div id="hp-bar"></div></div>
+<div id="copyright-hud">© 2026 Larry and Alan. All rights reserved.</div>
 
+<!-- 雙模式切換大地圖視窗 (按 M 開啟) -->
 <div id="big-map-modal">
   <div id="big-map-header">
-    <span>🗺️ 台灣不規則路網衛星導航圖 (滾輪放大可看真實彎道與圓環 • 點擊規劃導航)</span>
-    <div style="display:flex; gap:6px;">
-      <button onclick="clearNavRoute()" style="padding:6px 12px; background:#0284c7; color:#fff; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">清除導航</button>
-      <button onclick="toggleBigMap()" style="padding:6px 14px; background:#ef4444; color:#fff; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">關閉 (M)</button>
+    <span>🗺️ 環遊臺灣導航地圖 (可切換真實衛星圖 / 遊戲高架交流道圖)</span>
+    <div class="map-btn-grp">
+      <button class="m-tab-btn active" id="tab-sat" onclick="switchMapType('sat')">🛰️ 真實衛星空照圖</button>
+      <button class="m-tab-btn" id="tab-game" onclick="switchMapType('game')">🛣️ 遊戲高架交流道圖</button>
+      <button class="m-tab-btn" style="background:#10b981;" onclick="openExternalGoogleMaps()">🌐 Google Maps</button>
+      <button class="m-tab-btn" style="background:#0284c7;" onclick="clearNavRoute()">清除導航</button>
+      <button class="m-tab-btn" style="background:#ef4444;" onclick="toggleBigMap()">關閉 (M)</button>
     </div>
   </div>
   <div class="map-wrap-box">
-    <canvas id="big-map-canvas" width="560" height="880"></canvas>
-    <div class="map-zoom-controls">
-      <button class="zoom-btn" onclick="zoomMap(1.35)" title="放大地圖">+</button>
-      <button class="zoom-btn" onclick="zoomMap(0.74)" title="縮小地圖">−</button>
-      <button class="zoom-btn" onclick="resetMapView()" style="font-size:12px;" title="重置縮放">1x</button>
-    </div>
+    <div id="leaflet-map"></div>
+    <canvas id="game-vector-canvas" width="960" height="720"></canvas>
     <div class="map-legend">
-      🖱️ 滾輪/按鈕：縮放 (目前 <span id="zoom-level-txt">1.0x</span>) &nbsp;|&nbsp; 按住拖曳：平移 &nbsp;|&nbsp; 單擊：彎道 GPS 導航 &nbsp;|&nbsp; 雙擊：瞬移
+      🖱️ 單擊地圖任意處：沿公路與交流道規劃 GPS 藍光導航 &nbsp;|&nbsp; 雙擊地圖：直接空降瞬移
     </div>
   </div>
 </div>
 
+<!-- 手機與超商共用面板 -->
 <div id="side-panel"></div>
 
+<!-- 手機版虛擬觸控 -->
 <div id="mobile-controls">
   <div id="joystick-zone"><div id="joystick-knob"></div></div>
   <div class="touch-btns">
-    <div class="t-btn" onclick="toggleBigMap()">🗺️<br>衛星圖</div>
+    <div class="t-btn" onclick="toggleBigMap()">🗺️<br>地圖</div>
     <div class="t-btn" onclick="openPhone()">📱<br>手機</div>
     <div class="t-btn" ontouchstart="keys['Space']=true" ontouchend="keys['Space']=false">💨<br>甩尾</div>
-    <div class="t-btn" onclick="cycleWeapon()">🔫<br>武器</div>
-    <div class="t-btn" onclick="handleInteract()">🚗<br>互動</div>
-    <div class="t-btn" onclick="doAttack()">👊<br>攻擊</div>
-    <div class="t-btn atk" ontouchstart="doAttack()" onclick="doAttack()">🔥 開火 / 揮拳</div>
+    <div class="t-btn" id="m-weapon-btn" onclick="cycleWeapon()">🔫<br>武器</div>
+    <div class="t-btn" onclick="handleInteract()">🔑<br>互動(E)</div>
+    <div class="t-btn" id="m-atk-small" onclick="doAttack()">👊<br>攻擊</div>
+    <div class="t-btn atk" id="m-atk-big" ontouchstart="doAttack()" onclick="doAttack()">🔥 開火 / 揮拳</div>
   </div>
 </div>
 
@@ -315,28 +373,34 @@
 
 <script>
 // =========================================================
-// 1. 全台 16 縣市座標 & 確定性偽隨機地形演算法
+// 1. 全台 16 縣市座標 & 經緯度雙向映射
 // =========================================================
 const TAIWAN_CITIES = {
-  keelung:   { x: 640,  z: -3320, name: "基隆市", landmark: "基隆廟口夜市", h: 20 },
-  taipei:    { x: 460,  z: -3180, name: "台北市 / 新北", landmark: "台北 101 大樓", h: 98 },
-  taoyuan:   { x: 220,  z: -2920, name: "桃園市", landmark: "桃園國際機場", h: 22 },
-  hsinchu:   { x: 40,   z: -2520, name: "新竹市", landmark: "新竹科學園區", h: 24 },
-  miaoli:    { x: -120, z: -1980, name: "苗栗縣", landmark: "頭份 / 三義木雕", h: 18 },
-  yilan:     { x: 740,  z: -2420, name: "宜蘭縣羅東鎮", landmark: "羅東觀光夜市", h: 20 },
-  taichung:  { x: -280, z: -1260, name: "台中市", landmark: "台中逢甲 / 歌劇院", h: 36 },
-  changhua:  { x: -420, z: -920,  name: "彰化市", landmark: "八卦山大佛風景區", h: 20 },
-  nantou:    { x: 20,   z: -680,  name: "南投縣", landmark: "日月潭風景區", h: 18 },
-  yunlin:    { x: -540, z: -260,  name: "雲林斗六", landmark: "斗六人文夜市", h: 18 },
-  chiayi:    { x: -560, z: 320,   name: "嘉義市", landmark: "嘉義文化路夜市", h: 20 },
-  hualien:   { x: 620,  z: -420,  name: "花蓮縣", landmark: "花蓮東大門夜市", h: 20 },
-  tainan:    { x: -680, z: 1280,  name: "台南市", landmark: "台南赤崁樓 / 國華街", h: 22 },
-  kaohsiung: { x: -560, z: 2180,  name: "高雄市", landmark: "高雄 85 大樓", h: 85 },
-  taitung:   { x: 280,  z: 1680,  name: "台東縣", landmark: "台東鐵花村", h: 20 },
-  pingtung:  { x: -340, z: 2680,  name: "屏東縣", landmark: "墾丁大街 / 鵝鑾鼻", h: 20 }
+  keelung:   { x: 640,  z: -3320, lat: 25.1276, lng: 121.7392, name: "基隆市", landmark: "基隆廟口夜市", h: 24, edu: "基隆港是北台灣最重要的天然良港，因終年多雨而被稱為『雨都』，廟口夜市擁有百年歷史小吃文化。" },
+  taipei:    { x: 460,  z: -3180, lat: 25.0330, lng: 121.5654, name: "台北市 / 新北", landmark: "台北 101 大樓", h: 105, edu: "台北盆地為台灣政治經濟中心，台北 101 高度 508 公尺，採用巨型風阻尼器抵禦颱風與地震。" },
+  taoyuan:   { x: 220,  z: -2920, lat: 24.9936, lng: 121.3010, name: "桃園市", landmark: "桃園國際機場", h: 26, edu: "桃園台地素有『千塘之鄉』美譽，早期先民開鑿數千口埤塘灌溉農田，現為台灣國際航空門戶。" },
+  hsinchu:   { x: 40,   z: -2520, lat: 24.8138, lng: 120.9675, name: "新竹市", landmark: "新竹科學園區", h: 28, edu: "新竹因地形產生狹管效應，秋冬東北季風強勁被稱為『風城』，同時是全球半導體產業核心重鎮。" },
+  miaoli:    { x: -120, z: -1980, lat: 24.5602, lng: 120.8214, name: "苗栗縣", landmark: "三義木雕博物館", h: 20, edu: "苗栗多丘陵山地，是台灣客家文化重要聚落，三義鄉以樟木雕刻藝術與舊山線鐵道聞名全台。" },
+  yilan:     { x: 740,  z: -2420, lat: 24.6770, lng: 121.7669, name: "宜蘭縣羅東鎮", landmark: "羅東觀光夜市", h: 22, edu: "蘭陽平原三面環山、東臨太平洋，羅東早期為太平山林場木材集散地，『羅東』源自平埔族語『猴子』之意。" },
+  taichung:  { x: -280, z: -1260, lat: 24.1477, lng: 120.6736, name: "台中市", landmark: "臺中國家歌劇院", h: 42, edu: "台中盆地氣候宜人，臺中國家歌劇院由建築師伊東豊雄設計，以無樑柱的『曲牆』建築工法聞名世界。" },
+  changhua:  { x: -420, z: -920,  lat: 24.0518, lng: 120.5161, name: "彰化市", landmark: "八卦山大佛風景區", h: 22, edu: "彰化平原為台灣重要糧倉，鹿港小鎮保存完整清代閩南建築與天后宮古蹟，八卦山大佛為中台灣地標。" },
+  nantou:    { x: 20,   z: -680,  lat: 23.8626, lng: 120.9160, name: "南投縣", landmark: "日月潭風景區", h: 20, edu: "南投是台灣唯一不靠海的內陸縣份，日月潭為台灣最大天然湖泊，也是邵族原住民的世居聖地。" },
+  yunlin:    { x: -540, z: -260,  lat: 23.7092, lng: 120.4313, name: "雲林斗六", landmark: "西螺大橋 / 斗六", h: 20, edu: "雲林位於濁水溪沖積扇南端，是台灣最重要的農業大縣，西螺大橋曾是遠東第一長鐵橋。" },
+  chiayi:    { x: -560, z: 320,   lat: 23.4801, lng: 120.4491, name: "嘉義市", landmark: "嘉義噴水圓環", h: 22, edu: "北回歸線通過嘉義，是阿里山森林鐵路的起點，早期因林業繁榮而享有『木都』與『畫都』美譽。" },
+  hualien:   { x: 620,  z: -420,  lat: 23.9872, lng: 121.6016, name: "花蓮縣", landmark: "太魯閣國家公園", h: 22, edu: "花蓮位於板塊交界帶，立霧溪下切大理石岩層造就世界級的太魯閣峽谷景觀，盛產大理石與玫瑰石。" },
+  tainan:    { x: -680, z: 1280,  lat: 22.9997, lng: 120.2270, name: "台南市", landmark: "台南赤崁樓", h: 24, edu: "台南是台灣最早開發的歷史古都，保存熱蘭遮城（安平古堡）與赤崁樓等荷蘭與明清時期重要古蹟。" },
+  kaohsiung: { x: -560, z: 2180,  lat: 22.6273, lng: 120.3014, name: "高雄市", landmark: "高雄 85 大樓", h: 90, edu: "高雄港為台灣最大國際商港，愛河貫穿市區，從重工業基地轉型為結合流行音樂中心與駁二藝術的港灣都會。" },
+  taitung:   { x: 280,  z: 1680,  lat: 22.7583, lng: 121.1444, name: "台東縣", landmark: "台東鐵花村 / 卑南", h: 20, edu: "台東擁有全台最長海岸線與豐富南島原住民族群文化，卑南遺址出土大量精美玉器，見證史前文明。" },
+  pingtung:  { x: -340, z: 2680,  lat: 22.0040, lng: 120.7439, name: "屏東縣", landmark: "鵝鑾鼻燈塔 / 墾丁", h: 20, edu: "屏東位於台灣最南端，熱帶季風氣候孕育豐富農漁業，鵝鑾鼻燈塔被譽為『東亞之光』，守護巴士海峽航道。" }
 };
 
-// 高解析度不規則台灣海岸線多邊形 (包含半島、海灣、河口凹折)
+function worldToLatLng(wx, wz) {
+  return [23.72 - (wz / 3800) * 1.65, 120.92 + (wx / 1400) * 1.15];
+}
+function latLngToWorld(lat, lng) {
+  return { x: ((lng - 120.92) / 1.15) * 1400, z: ((23.72 - lat) / 1.65) * 3800 };
+}
+
 const TAIWAN_POLYGON = [
   [540, -3560], [630, -3510], [720, -3420], [840, -3260], [760, -3050],
   [790, -2750], [820, -2450], [810, -2100], [760, -1650], [740, -1100],
@@ -348,24 +412,25 @@ const TAIWAN_POLYGON = [
   [120, -2920], [220, -3150], [380, -3380]
 ];
 
-// 真實不規則曲線公路幹道定義 (每條路線含多個蜿蜒控制點，模擬真實國道、北宜九彎十八拐、蘇花懸崖、中橫山路)
-const CURVED_HIGHWAYS = [
-  { name: "國道一號北段", width: 26, color: "#eab308", pts: [[640,-3320], [560,-3240], [460,-3180], [350,-3090], [220,-2920], [150,-2710], [40,-2520]] },
-  { name: "國道一號中段", width: 26, color: "#eab308", pts: [[40,-2520], [-60,-2260], [-120,-1980], [-210,-1640], [-280,-1260], [-370,-1080], [-420,-920]] },
-  { name: "國道一號南段", width: 26, color: "#eab308", pts: [[-420,-920], [-490,-580], [-540,-260], [-580,40], [-560,320], [-640,810], [-680,1280], [-610,1740], [-560,2180], [-450,2450], [-340,2680]] },
-  { name: "國道三號山線弧線", width: 22, color: "#f59e0b", pts: [[460,-3180], [310,-2850], [140,-2450], [-20,-1920], [-160,-1280], [-290,-720], [-410,-180], [-460,420], [-510,1250], [-430,2150], [-340,2680]] },
-  { name: "國五雪隧 & 北宜九彎十八拐", width: 24, color: "#38bdf8", pts: [[460,-3180], [570,-3060], [610,-2880], [690,-2720], [650,-2560], [740,-2420]] },
-  { name: "蘇花改懸崖海岸蜿蜒公路", width: 22, color: "#38bdf8", pts: [[740,-2420], [775,-2050], [710,-1680], [745,-1280], [670,-860], [620,-420]] },
-  { name: "花東縱谷 & 台11線海岸雙弧", width: 22, color: "#38bdf8", pts: [[620,-420], [550,120], [490,680], [380,1180], [280,1680]] },
-  { name: "南迴公路山海髮夾彎", width: 20, color: "#38bdf8", pts: [[280,1680], [170,2120], [60,2480], [-90,2640], [-220,2560], [-340,2680]] },
-  { name: "中橫 / 國六埔里日月潭山路", width: 20, color: "#a855f7", pts: [[-280,-1260], [-140,-1050], [-50,-890], [20,-680], [160,-620], [380,-510], [620,-420]] }
+// 高架高速公路網 (elevated: true 代表高架橋 y=5.5m，並設有橋墩與交流道)
+const ELEVATED_HIGHWAYS = [
+  { name: "國道一號高架北段", width: 24, color: "#eab308", elevated: true, pts: [[640,-3320], [560,-3240], [460,-3180], [350,-3090], [220,-2920], [150,-2710], [40,-2520]] },
+  { name: "國道一號高架中段", width: 24, color: "#eab308", elevated: true, pts: [[40,-2520], [-60,-2260], [-120,-1980], [-210,-1640], [-280,-1260], [-370,-1080], [-420,-920]] },
+  { name: "國道一號高架南段", width: 24, color: "#eab308", elevated: true, pts: [[-420,-920], [-490,-580], [-540,-260], [-580,40], [-560,320], [-640,810], [-680,1280], [-610,1740], [-560,2180], [-450,2450], [-340,2680]] },
+  { name: "國道三號高架山線", width: 22, color: "#f59e0b", elevated: true, pts: [[460,-3180], [310,-2850], [140,-2450], [-20,-1920], [-160,-1280], [-290,-720], [-410,-180], [-460,420], [-510,1250], [-430,2150], [-340,2680]] },
+  { name: "國道五號高架雪隧線", width: 22, color: "#38bdf8", elevated: true, pts: [[460,-3180], [570,-3060], [610,-2880], [690,-2720], [650,-2560], [740,-2420]] },
+  { name: "蘇花改海岸平面公路", width: 20, color: "#38bdf8", elevated: false, pts: [[740,-2420], [775,-2050], [710,-1680], [745,-1280], [670,-860], [620,-420]] },
+  { name: "花東縱谷平面公路", width: 20, color: "#38bdf8", elevated: false, pts: [[620,-420], [550,120], [490,680], [380,1180], [280,1680]] },
+  { name: "南迴山海平面公路", width: 18, color: "#38bdf8", elevated: false, pts: [[280,1680], [170,2120], [60,2480], [-90,2640], [-220,2560], [-340,2680]] },
+  { name: "國六埔里日月潭山線", width: 18, color: "#a855f7", elevated: false, pts: [[-280,-1260], [-140,-1050], [-50,-890], [20,-680], [160,-620], [380,-510], [620,-420]] }
 ];
 
 // =========================================================
-// 2. 曲線路網圖論建立 (Catmull-Rom 樣條插值 + 細分圖論節點)
+// 2. 不規則曲線路網、高架橋與立體交流道匝道系統
 // =========================================================
-const irregularRoadPolylines = []; // 儲存所有不規則道路折線 [{ pts: [{x,z}...], width, isHighway, color }]
-const graphNodes = [];             // 細分後的導航圖節點 [{ id, x, z, neighbors: [{id, dist}] }]
+const irregularRoadPolylines = [];
+const interchangeRamps = []; // 立體交流道斜坡 [{ x1, z1, y1, x2, z2, y2, width }]
+const graphNodes = [];
 
 function addGraphEdge(idA, idB) {
   const a = graphNodes[idA], b = graphNodes[idB];
@@ -374,31 +439,23 @@ function addGraphEdge(idA, idB) {
   b.neighbors.push({ id: idA, dist: d });
 }
 
-function getOrCreateGraphNode(x, z, snapRadius = 26) {
+function getOrCreateGraphNode(x, z, snapRadius = 24) {
   for (let i = 0; i < graphNodes.length; i++) {
-    if (Math.hypot(graphNodes[i].x - x, graphNodes[i].z - z) < snapRadius) {
-      return i;
-    }
+    if (Math.hypot(graphNodes[i].x - x, graphNodes[i].z - z) < snapRadius) return i;
   }
   const id = graphNodes.length;
   graphNodes.push({ id, x, z, neighbors: [] });
   return id;
 }
 
-// Catmull-Rom 樣條曲線插值器：將少數控制點轉為絲滑真實彎道
-function sampleCatmullRom(rawPts, subdivisions = 14) {
+function sampleCatmullRom(rawPts, subdivisions = 10) {
   if (rawPts.length < 2) return rawPts.map(([x, z]) => ({ x, z }));
   const result = [];
   for (let i = 0; i < rawPts.length - 1; i++) {
-    const p0 = rawPts[Math.max(0, i - 1)];
-    const p1 = rawPts[i];
-    const p2 = rawPts[i + 1];
-    const p3 = rawPts[Math.min(rawPts.length - 1, i + 2)];
-
+    const p0 = rawPts[Math.max(0, i - 1)], p1 = rawPts[i];
+    const p2 = rawPts[i + 1], p3 = rawPts[Math.min(rawPts.length - 1, i + 2)];
     for (let s = 0; s < subdivisions; s++) {
-      const t = s / subdivisions;
-      const t2 = t * t;
-      const t3 = t2 * t;
+      const t = s / subdivisions, t2 = t * t, t3 = t2 * t;
       const x = 0.5 * ((2 * p1[0]) + (-p0[0] + p2[0]) * t + (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * t2 + (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * t3);
       const z = 0.5 * ((2 * p1[1]) + (-p0[1] + p2[1]) * t + (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2 + (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * t3);
       result.push({ x, z });
@@ -409,72 +466,111 @@ function sampleCatmullRom(rawPts, subdivisions = 14) {
   return result;
 }
 
-// 註冊一條不規則道路並寫入導航圖論
-function registerCurvedRoad(sampledPts, width, isHighway = false, color = "#475569") {
-  irregularRoadPolylines.push({ pts: sampledPts, width, isHighway, color });
+function registerCurvedRoad(sampledPts, width, isHighway = false, color = "#475569", elevated = false) {
+  irregularRoadPolylines.push({ pts: sampledPts, width, isHighway, color, elevated });
   let prevNodeId = null;
   for (let i = 0; i < sampledPts.length; i++) {
     const nid = getOrCreateGraphNode(sampledPts[i].x, sampledPts[i].z, isHighway ? 35 : 18);
-    if (prevNodeId !== null && prevNodeId !== nid) {
-      addGraphEdge(prevNodeId, nid);
-    }
+    if (prevNodeId !== null && prevNodeId !== nid) addGraphEdge(prevNodeId, nid);
     prevNodeId = nid;
   }
 }
 
-// 1. 生成全台不規則高速公路曲線
-CURVED_HIGHWAYS.forEach(hw => {
-  const smoothPts = sampleCatmullRom(hw.pts, 12);
-  registerCurvedRoad(smoothPts, hw.width, true, hw.color);
+ELEVATED_HIGHWAYS.forEach(hw => {
+  registerCurvedRoad(sampleCatmullRom(hw.pts, 10), hw.width, true, hw.color, hw.elevated);
 });
 
-// 2. 為全台 16 大縣市生成「不規則圓環 + 放射狀斜向大道 + 蜿蜒巷弄」
+// 為全台 16 縣市建立平面環狀市區道路 + 連接高架國道的立體斜坡交流道
 Object.values(TAIWAN_CITIES).forEach((c, cIdx) => {
-  // (A) 市中心不規則圓環 (16邊形閉合曲線)
-  const ringR = 46 + (cIdx % 3) * 8;
-  const ringRaw = [];
-  for (let a = 0; a <= 12; a++) {
-    const ang = (a / 12) * Math.PI * 2;
-    const wobble = Math.sin(ang * 3 + cIdx) * 6;
-    ringRaw.push([c.x + Math.cos(ang) * (ringR + wobble), c.z + Math.sin(ang) * (ringR + wobble)]);
-  }
-  registerCurvedRoad(sampleCatmullRom(ringRaw, 4), 18, false, "#64748b");
+  // 市中心與外環平面道路
+  [48, 130].forEach((ringR, rIdx) => {
+    const ringRaw = [];
+    for (let a = 0; a <= 12; a++) {
+      const ang = (a / 12) * Math.PI * 2;
+      const wobble = Math.sin(ang * 3 + cIdx + rIdx) * 6;
+      ringRaw.push([c.x + Math.cos(ang) * (ringR + wobble), c.z + Math.sin(ang) * (ringR + wobble)]);
+    }
+    registerCurvedRoad(sampleCatmullRom(ringRaw, 4), rIdx === 0 ? 18 : 15, false, "#64748b", false);
+  });
 
-  // (B) 5 條不同角度的放射狀彎曲林蔭大道 (打破橫平豎直網格)
-  for (let spoke = 0; spoke < 5; spoke++) {
-    const baseAng = (spoke / 5) * Math.PI * 2 + (cIdx * 0.37);
-    const bend1 = Math.sin(cIdx + spoke) * 0.28;
-    const bend2 = Math.cos(cIdx - spoke) * 0.35;
+  // 放射狀平面大道
+  for (let spoke = 0; spoke < 4; spoke++) {
+    const baseAng = (spoke / 4) * Math.PI * 2 + (cIdx * 0.37);
     const spokeRaw = [
       [c.x + Math.cos(baseAng) * 35, c.z + Math.sin(baseAng) * 35],
-      [c.x + Math.cos(baseAng + bend1) * 115, c.z + Math.sin(baseAng + bend1) * 115],
-      [c.x + Math.cos(baseAng + bend2) * 210, c.z + Math.sin(baseAng + bend2) * 210]
+      [c.x + Math.cos(baseAng + 0.15) * 120, c.z + Math.sin(baseAng + 0.15) * 120],
+      [c.x + Math.cos(baseAng - 0.15) * 210, c.z + Math.sin(baseAng - 0.15) * 210]
     ];
-    registerCurvedRoad(sampleCatmullRom(spokeRaw, 8), 16, false, "#64748b");
+    registerCurvedRoad(sampleCatmullRom(spokeRaw, 6), 16, false, "#64748b", false);
   }
 
-  // (C) 外環蜿蜒聯絡弧道 (連接各放射大道)
-  const outerRaw = [];
-  for (let k = 0; k <= 8; k++) {
-    const ang = (k / 8) * Math.PI * 1.65 + cIdx;
-    const r = 135 + Math.cos(k * 1.7 + cIdx) * 24;
-    outerRaw.push([c.x + Math.cos(ang) * r, c.z + Math.sin(ang) * r]);
+  // 在有高架國道經過的縣市建立「立體斜坡交流道」(從平面 y=0.1 爬升至高架 y=5.5)
+  const hasElevated = !["hualien", "taitung", "nantou"].includes(Object.keys(TAIWAN_CITIES)[cIdx]);
+  if (hasElevated) {
+    // 北向/南向雙匝道交流道
+    interchangeRamps.push({
+      cityName: c.name + "交流道",
+      x1: c.x + 48, z1: c.z + 45, y1: 0.1,
+      x2: c.x + 12, z2: c.z - 25, y2: 5.5,
+      width: 14
+    });
+    interchangeRamps.push({
+      cityName: c.name + "南下匝道",
+      x1: c.x - 48, z1: c.z - 45, y1: 0.1,
+      x2: c.x - 12, z2: c.z + 25, y2: 5.5,
+      width: 14
+    });
   }
-  registerCurvedRoad(sampleCatmullRom(outerRaw, 6), 14, false, "#64748b");
 });
 
+// 計算任意 (x, z) 座標的地面/交流道/高架橋支撐高度
+function getSurfaceElevation(x, z, currentY = 0) {
+  // 1. 檢查是否在交流道斜坡上
+  for (let i = 0; i < interchangeRamps.length; i++) {
+    const r = interchangeRamps[i];
+    const dx = r.x2 - r.x1, dz = r.z2 - r.z1;
+    const len2 = dx * dx + dz * dz;
+    let t = ((x - r.x1) * dx + (z - r.z1) * dz) / len2;
+    if (t >= -0.05 && t <= 1.05) {
+      t = Math.max(0, Math.min(1, t));
+      const projX = r.x1 + t * dx, projZ = r.z1 + t * dz;
+      if (Math.hypot(x - projX, z - projZ) <= r.width * 0.65) {
+        return r.y1 + t * (r.y2 - r.y1);
+      }
+    }
+  }
+  // 2. 若車輛目前已經在半空/高架高度 (currentY >= 3.8)，檢查是否仍在高架國道橋面上
+  if (currentY >= 3.8) {
+    for (let i = 0; i < irregularRoadPolylines.length; i++) {
+      const poly = irregularRoadPolylines[i];
+      if (!poly.elevated) continue;
+      for (let j = 0; j < poly.pts.length - 1; j++) {
+        const p1 = poly.pts[j], p2 = poly.pts[j + 1];
+        const dx = p2.x - p1.x, dz = p2.z - p1.z;
+        const len2 = dx * dx + dz * dz;
+        if (len2 < 0.1) continue;
+        let t = ((x - p1.x) * dx + (z - p1.z) * dz) / len2;
+        if (t >= -0.1 && t <= 1.1) {
+          t = Math.max(0, Math.min(1, t));
+          if (Math.hypot(x - (p1.x + t * dx), z - (p1.z + t * dz)) <= poly.width * 0.65) {
+            return 5.5;
+          }
+        }
+      }
+    }
+  }
+  return 0;
+}
+
 // =========================================================
-// 3. 高精度彎道貼合 Dijkstra GPS 導航引擎
+// 3. Dijkstra GPS 路徑規劃引擎 & 3D 地面/高架導航光帶
 // =========================================================
 let activeNavRoute = [];
 let navDestinationName = "";
 
 function computeGPSRoute(destX, destZ, customLabel = "") {
   if (graphNodes.length === 0) return;
-
-  // 找離玩家與目的地最近的道路圖節點
-  let startId = 0, endId = 0;
-  let minStartD = Infinity, minEndD = Infinity;
+  let startId = 0, endId = 0, minStartD = Infinity, minEndD = Infinity;
   for (let i = 0; i < graphNodes.length; i++) {
     const n = graphNodes[i];
     const d1 = Math.hypot(player.x - n.x, player.z - n.z);
@@ -483,7 +579,6 @@ function computeGPSRoute(destX, destZ, customLabel = "") {
     if (d2 < minEndD) { minEndD = d2; endId = i; }
   }
 
-  // Dijkstra 最短路徑搜尋 (沿著所有不規則彎道節點前進)
   const N = graphNodes.length;
   const dist = new Float64Array(N).fill(Infinity);
   const prev = new Int32Array(N).fill(-1);
@@ -497,7 +592,6 @@ function computeGPSRoute(destX, destZ, customLabel = "") {
     }
     if (u === -1 || u === endId) break;
     visited[u] = 1;
-
     const nbrs = graphNodes[u].neighbors;
     for (let j = 0; j < nbrs.length; j++) {
       const { id: v, dist: w } = nbrs[j];
@@ -511,21 +605,15 @@ function computeGPSRoute(destX, destZ, customLabel = "") {
   const pts = [{ x: player.x, z: player.z }];
   const pathIds = [];
   let curr = endId;
-  while (curr !== -1) {
-    pathIds.unshift(curr);
-    curr = prev[curr];
-  }
+  while (curr !== -1) { pathIds.unshift(curr); curr = prev[curr]; }
   pathIds.forEach(id => {
     const n = graphNodes[id];
-    if (Math.hypot(n.x - player.x, n.z - player.z) > 18) {
-      pts.push({ x: n.x, z: n.z });
-    }
+    if (Math.hypot(n.x - player.x, n.z - player.z) > 18) pts.push({ x: n.x, z: n.z });
   });
   pts.push({ x: destX, z: destZ });
 
-  // 判斷最近縣市名稱
-  let nearestName = "自訂不規則路網目標";
-  let minCityD = 220;
+  let nearestName = "自訂導航目標";
+  let minCityD = 240;
   Object.values(TAIWAN_CITIES).forEach(c => {
     const d = Math.hypot(destX - c.x, destZ - c.z);
     if (d < minCityD) { minCityD = d; nearestName = c.name; }
@@ -535,28 +623,24 @@ function computeGPSRoute(destX, destZ, customLabel = "") {
   navDestinationName = customLabel || nearestName;
   rebuild3DNavLine();
   updateNavStatusHUD();
+  syncAllMaps();
 }
 
 function clearNavRoute() {
   activeNavRoute = [];
   navDestinationName = "";
   rebuild3DNavLine();
+  syncAllMaps();
   document.getElementById('nav-status').style.display = 'none';
-  if (document.getElementById('big-map-modal').style.display === 'flex') drawBigMap();
 }
 
 function updateNavStatusHUD() {
   const el = document.getElementById('nav-status');
-  if (activeNavRoute.length < 2) {
-    el.style.display = 'none';
-    return;
-  }
+  if (activeNavRoute.length < 2) { el.style.display = 'none'; return; }
   activeNavRoute[0] = { x: player.x, z: player.z };
-  // 若玩家已通過第二個節點則自動消除舊節點
   while (activeNavRoute.length > 2 && Math.hypot(activeNavRoute[1].x - player.x, activeNavRoute[1].z - player.z) < 25) {
     activeNavRoute.splice(1, 1);
   }
-
   let totalDist = 0;
   for (let i = 0; i < activeNavRoute.length - 1; i++) {
     totalDist += Math.hypot(activeNavRoute[i+1].x - activeNavRoute[i].x, activeNavRoute[i+1].z - activeNavRoute[i].z);
@@ -567,13 +651,21 @@ function updateNavStatusHUD() {
     return;
   }
   el.style.display = 'block';
-  el.innerText = `🧭 導航至【${navDestinationName}】• 沿彎道藍光行駛 (${(totalDist / 100).toFixed(1)} km)`;
+  el.innerText = `🧭 導航至【${navDestinationName}】• 沿藍光行駛 (${(totalDist / 100).toFixed(1)} km)`;
 }
 
 let selectedCity = 'yilan';
+let gameMode = 'free';
 let isGodMode = false;
 let gameStarted = false;
 let isPaused = false;
+
+function selectMode(mode) {
+  gameMode = mode;
+  document.getElementById('mode-free').className = 'mode-card' + (mode === 'free' ? ' active-free' : '');
+  document.getElementById('mode-edu').className = 'mode-card' + (mode === 'edu' ? ' active-edu' : '');
+  document.getElementById('god-toggle-row').style.display = mode === 'free' ? 'flex' : 'none';
+}
 
 function selectCity(city) {
   selectedCity = city;
@@ -591,7 +683,7 @@ function updatePauseState() {
 }
 
 // =========================================================
-// 4. Three.js 3D 引擎與衛星級 3D 台灣島嶼 + 彎道貼合渲染
+// 4. Three.js 3D 引擎與共享材質池 (徹底防止記憶體過載當機)
 // =========================================================
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x7dd3fc);
@@ -600,7 +692,7 @@ scene.fog = new THREE.FogExp2(0xbae6fd, 0.0016);
 const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 520);
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
 document.body.appendChild(renderer.domElement);
 
 scene.add(new THREE.HemisphereLight(0xffffff, 0x334155, 1.15));
@@ -608,49 +700,52 @@ const sunLight = new THREE.DirectionalLight(0xfffbeb, 1.05);
 sunLight.position.set(400, 600, 300);
 scene.add(sunLight);
 
-// 3D 地面導航路線光帶群組
+// 材質快取池 (Shared Material Cache)
+const matCache = {};
+function getSharedMat(hex, rough = 0.65, metal = 0.1) {
+  const key = `${hex}_${rough}_${metal}`;
+  if (!matCache[key]) {
+    matCache[key] = new THREE.MeshStandardMaterial({ color: hex, roughness: rough, metalness: metal });
+  }
+  return matCache[key];
+}
+
 const nav3DGroup = new THREE.Group();
 scene.add(nav3DGroup);
 
 function rebuild3DNavLine() {
-  while (nav3DGroup.children.length > 0) {
-    nav3DGroup.remove(nav3DGroup.children[0]);
-  }
+  while (nav3DGroup.children.length > 0) nav3DGroup.remove(nav3DGroup.children[0]);
   if (activeNavRoute.length < 2) return;
 
-  const mat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.88 });
+  const mat = new THREE.MeshBasicMaterial({
+    color: 0x38bdf8, transparent: true, opacity: 0.9,
+    polygonOffset: true, polygonOffsetFactor: -4
+  });
   for (let i = 0; i < activeNavRoute.length - 1; i++) {
     const p1 = activeNavRoute[i], p2 = activeNavRoute[i + 1];
-    // 只建立玩家周圍 700m 內的 3D 導航光帶以維持極致流暢度
     if (Math.abs(p1.x - player.x) > 700 && Math.abs(p2.x - player.x) > 700) continue;
     if (Math.abs(p1.z - player.z) > 700 && Math.abs(p2.z - player.z) > 700) continue;
-
     const dx = p2.x - p1.x, dz = p2.z - p1.z;
     const len = Math.hypot(dx, dz);
     if (len < 0.5) continue;
     const strip = new THREE.Mesh(new THREE.PlaneGeometry(3.4, len + 1.5), mat);
     strip.rotation.x = -Math.PI / 2;
     strip.rotation.z = -Math.atan2(dx, dz);
-    strip.position.set((p1.x + p2.x) / 2, 0.25, (p1.z + p2.z) / 2);
+    strip.position.set((p1.x + p2.x) / 2, player.y + 0.35, (p1.z + p2.z) / 2);
     nav3DGroup.add(strip);
   }
 
   const dest = activeNavRoute[activeNavRoute.length - 1];
   const beacon = new THREE.Mesh(
-    new THREE.CylinderGeometry(2.5, 2.5, 85, 16, 1, true),
+    new THREE.CylinderGeometry(2.5, 2.5, 90, 14, 1, true),
     new THREE.MeshBasicMaterial({ color: 0xef4444, transparent: true, opacity: 0.5, side: THREE.DoubleSide })
   );
-  beacon.position.set(dest.x, 42.5, dest.z);
+  beacon.position.set(dest.x, 45, dest.z);
   nav3DGroup.add(beacon);
 }
 
-// 海洋與真實不規則海岸線台灣陸地
-const ocean = new THREE.Mesh(
-  new THREE.PlaneGeometry(16000, 18000),
-  new THREE.MeshStandardMaterial({ color: 0x0a2e52, roughness: 0.4 })
-);
-ocean.rotation.x = -Math.PI / 2;
-ocean.position.y = -0.25;
+const ocean = new THREE.Mesh(new THREE.PlaneGeometry(16000, 18000), getSharedMat(0x0a2e52, 0.4));
+ocean.rotation.x = -Math.PI / 2; ocean.position.y = -0.25;
 scene.add(ocean);
 
 const islandShape = new THREE.Shape();
@@ -660,40 +755,30 @@ TAIWAN_POLYGON.forEach(([px, pz], i) => {
 });
 islandShape.closePath();
 
-const islandMesh = new THREE.Mesh(
-  new THREE.ShapeGeometry(islandShape),
-  new THREE.MeshStandardMaterial({ color: 0x365314, roughness: 0.9 })
-);
+const islandMesh = new THREE.Mesh(new THREE.ShapeGeometry(islandShape), getSharedMat(0x365314, 0.9));
 islandMesh.rotation.x = -Math.PI / 2;
 scene.add(islandMesh);
 
-// 中央山脈立體山脊群
-const mountainSpine = [
-  [360, -2400, 180, 140, 900],
-  [160, -1300, 240, 220, 1200],
-  [40,  0,     260, 250, 1300],
-  [-40, 1300,  220, 190, 1100]
-];
-mountainSpine.forEach(([mx, mz, mw, mh, md]) => {
-  const m = new THREE.Mesh(
-    new THREE.BoxGeometry(mw, mh, md),
-    new THREE.MeshStandardMaterial({ color: 0x1a3a1a, roughness: 0.95 })
-  );
-  m.position.set(mx, mh / 2, mz);
+// 中央山脈
+[[360,-2400,180,140,900], [160,-1300,240,220,1200], [40,0,260,250,1300], [-40,1300,220,190,1100]].forEach(([mx, mz, mw, mh, md]) => {
+  const m = new THREE.Mesh(new THREE.ConeGeometry(mw * 0.85, mh, 7), getSharedMat(0x1a3a1a, 0.95));
+  m.scale.set(1, 1, md / (mw * 1.4)); m.position.set(mx, mh / 2, mz);
   scene.add(m);
 });
 
-// 將所有不規則曲線道路具現化為 3D 柏油彎道與雙黃線 (並支援動態視距串流)
+// 渲染平面公路、高架高速公路 (y=5.5m 含橋墩護欄) 與立體斜坡交流道
 const dynamicRoadChunks = [];
-const asphaltMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.85 });
+const asphaltMat = getSharedMat(0x334155, 0.85);
+const elevatedDeckMat = getSharedMat(0x1e293b, 0.8);
+const railMat = getSharedMat(0xe2e8f0, 0.5);
 const yellowLineMat = new THREE.MeshBasicMaterial({ color: 0xfacc15 });
 
 irregularRoadPolylines.forEach(poly => {
   const chunkGroup = new THREE.Group();
   let sumX = 0, sumZ = 0;
   poly.pts.forEach(p => { sumX += p.x; sumZ += p.z; });
-  const cx = sumX / poly.pts.length;
-  const cz = sumZ / poly.pts.length;
+  const cx = sumX / poly.pts.length, cz = sumZ / poly.pts.length;
+  const deckY = poly.elevated ? 5.5 : 0.08;
 
   for (let i = 0; i < poly.pts.length - 1; i++) {
     const p1 = poly.pts[i], p2 = poly.pts[i + 1];
@@ -702,25 +787,61 @@ irregularRoadPolylines.forEach(poly => {
     if (len < 0.5) continue;
     const ang = Math.atan2(dx, dz);
 
-    const seg = new THREE.Mesh(new THREE.PlaneGeometry(poly.width, len + poly.width * 0.45), asphaltMat);
-    seg.rotation.x = -Math.PI / 2;
-    seg.rotation.z = -ang;
-    seg.position.set((p1.x + p2.x) / 2, 0.08, (p1.z + p2.z) / 2);
-    chunkGroup.add(seg);
+    if (poly.elevated) {
+      // 高架橋厚實箱型梁與雙側護欄
+      const deck = new THREE.Mesh(new THREE.BoxGeometry(poly.width, 0.7, len + poly.width * 0.4), elevatedDeckMat);
+      deck.rotation.y = ang;
+      deck.position.set((p1.x + p2.x) / 2, deckY - 0.35, (p1.z + p2.z) / 2);
+      chunkGroup.add(deck);
 
-    // 道路中央雙黃線標線
+      // 每隔一段距離建立混凝土橋墩
+      if (i % 3 === 0) {
+        const pillar = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.8, deckY, 8), railMat);
+        pillar.position.set(p1.x, deckY / 2, p1.z);
+        chunkGroup.add(pillar);
+      }
+    } else {
+      const seg = new THREE.Mesh(new THREE.PlaneGeometry(poly.width, len + poly.width * 0.45), asphaltMat);
+      seg.rotation.x = -Math.PI / 2; seg.rotation.z = -ang;
+      seg.position.set((p1.x + p2.x) / 2, deckY, (p1.z + p2.z) / 2);
+      chunkGroup.add(seg);
+    }
+
     const line = new THREE.Mesh(new THREE.PlaneGeometry(0.45, len * 0.75), yellowLineMat);
-    line.rotation.x = -Math.PI / 2;
-    line.rotation.z = -ang;
-    line.position.set((p1.x + p2.x) / 2, 0.11, (p1.z + p2.z) / 2);
+    line.rotation.x = -Math.PI / 2; line.rotation.z = -ang;
+    line.position.set((p1.x + p2.x) / 2, deckY + 0.04, (p1.z + p2.z) / 2);
     chunkGroup.add(line);
   }
   scene.add(chunkGroup);
   dynamicRoadChunks.push({ mesh: chunkGroup, x: cx, z: cz, isHighway: poly.isHighway });
 });
 
+// 建立立體斜坡交流道匝道模型
+interchangeRamps.forEach(r => {
+  const dx = r.x2 - r.x1, dz = r.z2 - r.z1, dy = r.y2 - r.y1;
+  const horizLen = Math.hypot(dx, dz);
+  const fullLen = Math.hypot(horizLen, dy);
+  const yaw = Math.atan2(dx, dz);
+  const pitch = Math.atan2(dy, horizLen);
+
+  const rampGroup = new THREE.Group();
+  const rampMesh = new THREE.Mesh(new THREE.BoxGeometry(r.width, 0.5, fullLen), elevatedDeckMat);
+  rampMesh.rotation.x = -pitch;
+  rampGroup.add(rampMesh);
+
+  const stripe = new THREE.Mesh(new THREE.PlaneGeometry(0.5, fullLen * 0.9), yellowLineMat);
+  stripe.rotation.x = -Math.PI / 2 - pitch;
+  stripe.position.y = 0.28;
+  rampGroup.add(stripe);
+
+  rampGroup.position.set((r.x1 + r.x2) / 2, (r.y1 + r.y2) / 2, (r.z1 + r.z2) / 2);
+  rampGroup.rotation.y = yaw;
+  scene.add(rampGroup);
+  dynamicRoadChunks.push({ mesh: rampGroup, x: r.x1, z: r.z1, isHighway: true });
+});
+
 // =========================================================
-// 5. 實體碰撞箱、全台 16 縣市地標、7-TWELVE 與沿彎道排列之不規則建築
+// 5. 高密度都市建築群 (最佳化間距確保 60FPS 不當機)
 // =========================================================
 const colliders = [];
 const enterableStores = [];
@@ -737,45 +858,47 @@ function makeSignTex(bg, title, sub = "") {
   return new THREE.CanvasTexture(c);
 }
 
-// 檢查座標是否壓在不規則路面上，避免建築擋住彎道
-function isNearAnyRoad(x, z, clearance = 16) {
+function isNearAnyRoadOrCollider(x, z, roadClearance = 18, colClearance = 18) {
   for (let i = 0; i < graphNodes.length; i++) {
-    if (Math.hypot(graphNodes[i].x - x, graphNodes[i].z - z) < clearance) return true;
+    if (Math.hypot(graphNodes[i].x - x, graphNodes[i].z - z) < roadClearance) return true;
+  }
+  for (let i = 0; i < colliders.length; i++) {
+    const c = colliders[i];
+    const cx = (c.minX + c.maxX) / 2, cz = (c.minZ + c.maxZ) / 2;
+    if (Math.hypot(cx - x, cz - z) < colClearance) return true;
   }
   return false;
 }
 
-function createSolidBuilding(x, z, w, h, d, color, label = "", signBg = "#1e293b", isHouse = false, rotY = 0) {
+function createArchitecturalBuilding(x, z, w, h, d, color, style = "modern", label = "", signBg = "#1e293b", rotY = 0) {
   const g = new THREE.Group();
-  const body = new THREE.Mesh(
-    new THREE.BoxGeometry(w, h, d),
-    new THREE.MeshStandardMaterial({ color, roughness: 0.65 })
-  );
-  body.position.y = h / 2;
-  g.add(body);
+  const mat = getSharedMat(color, 0.6);
 
-  if (isHouse) {
-    const roof = new THREE.Mesh(
-      new THREE.ConeGeometry(Math.max(w, d) * 0.72, 3.2, 4),
-      new THREE.MeshStandardMaterial({ color: 0x991b1b })
-    );
-    roof.position.y = h + 1.6; roof.rotation.y = Math.PI / 4;
-    g.add(roof);
-  }
-
-  const winMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, metalness: 0.45, roughness: 0.2 });
-  for (let wy = 3.5; wy < Math.min(h - 2, 45); wy += 5) {
-    const win = new THREE.Mesh(new THREE.PlaneGeometry(w * 0.75, 1.5), winMat);
-    win.position.set(0, wy, d / 2 + 0.06);
-    g.add(win);
+  if (style === "tower") {
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(w * 0.45, w * 0.55, h * 0.65, 8), mat);
+    base.position.y = h * 0.325; g.add(base);
+    const upper = new THREE.Mesh(new THREE.CylinderGeometry(w * 0.32, w * 0.42, h * 0.35, 8), mat);
+    upper.position.y = h * 0.82; g.add(upper);
+    const spire = new THREE.Mesh(new THREE.ConeGeometry(w * 0.15, h * 0.22, 8), getSharedMat(0xfacc15, 0.3, 0.8));
+    spire.position.y = h * 1.08; g.add(spire);
+  } else if (style === "gable") {
+    const body = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+    body.position.y = h / 2; g.add(body);
+    const roof = new THREE.Mesh(new THREE.ConeGeometry(Math.max(w, d) * 0.72, 3.6, 4), getSharedMat(0x991b1b, 0.7));
+    roof.position.y = h + 1.8; roof.rotation.y = Math.PI / 4; g.add(roof);
+  } else {
+    const lower = new THREE.Mesh(new THREE.BoxGeometry(w, h * 0.7, d), mat);
+    lower.position.y = h * 0.35; g.add(lower);
+    const top = new THREE.Mesh(new THREE.BoxGeometry(w * 0.78, h * 0.3, d * 0.78), mat);
+    top.position.y = h * 0.85; g.add(top);
   }
 
   if (label) {
     const sign = new THREE.Mesh(
-      new THREE.PlaneGeometry(Math.min(w * 0.95, 28), 4.5),
+      new THREE.PlaneGeometry(Math.min(w * 1.1, 30), 4.6),
       new THREE.MeshBasicMaterial({ map: makeSignTex(signBg, label) })
     );
-    sign.position.set(0, Math.min(h - 1.5, 10), d / 2 + 0.14);
+    sign.position.set(0, Math.min(h - 1.5, 11), d / 2 + 0.2);
     g.add(sign);
   }
 
@@ -784,20 +907,16 @@ function createSolidBuilding(x, z, w, h, d, color, label = "", signBg = "#1e293b
   scene.add(g);
   dynamicBuildings.push({ mesh: g, x, z });
 
-  const r = Math.max(w, d) * 0.52;
-  colliders.push({
-    minX: x - r, maxX: x + r,
-    minZ: z - r, maxZ: z + r,
-    rotY
-  });
+  const r = Math.max(w, d) * 0.48;
+  colliders.push({ minX: x - r, maxX: x + r, minZ: z - r, maxZ: z + r, height: h });
 }
 
 function createEnterableStore(x, z, branchName) {
   const w = 18, h = 8, d = 16;
   const g = new THREE.Group();
-  const wallMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc });
+  const wallMat = getSharedMat(0xf8fafc, 0.5);
 
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshStandardMaterial({ color: 0xe2e8f0 }));
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(w, d), getSharedMat(0xe2e8f0, 0.8));
   floor.rotation.x = -Math.PI / 2; floor.position.y = 0.12; g.add(floor);
 
   const roof = new THREE.Mesh(new THREE.BoxGeometry(w + 1, 1.2, d + 1), wallMat);
@@ -812,7 +931,7 @@ function createEnterableStore(x, z, branchName) {
   const rightW = new THREE.Mesh(new THREE.BoxGeometry(0.8, h, d), wallMat); rightW.position.set(w/2, h/2, 0); g.add(rightW);
   const backW = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.8), wallMat); backW.position.set(0, h/2, -d/2); g.add(backW);
 
-  const counter = new THREE.Mesh(new THREE.BoxGeometry(6, 1.3, 1.6), new THREE.MeshStandardMaterial({ color: 0xea580c }));
+  const counter = new THREE.Mesh(new THREE.BoxGeometry(6, 1.3, 1.6), getSharedMat(0xea580c, 0.5));
   counter.position.set(0, 0.75, -d/2 + 3.2); g.add(counter);
 
   const clerk = createCharacterMesh(0x16a34a, 0x1e293b, false);
@@ -822,63 +941,68 @@ function createEnterableStore(x, z, branchName) {
   scene.add(g);
   dynamicBuildings.push({ mesh: g, x, z });
 
-  colliders.push({ minX: x - w/2 - 0.8, maxX: x - w/2 + 0.8, minZ: z - d/2, maxZ: z + d/2 });
-  colliders.push({ minX: x + w/2 - 0.8, maxX: x + w/2 + 0.8, minZ: z - d/2, maxZ: z + d/2 });
-  colliders.push({ minX: x - w/2, maxX: x + w/2, minZ: z - d/2 - 0.8, maxZ: z - d/2 + 0.8 });
+  colliders.push({ minX: x - w/2 - 0.8, maxX: x - w/2 + 0.8, minZ: z - d/2, maxZ: z + d/2, height: h });
+  colliders.push({ minX: x + w/2 - 0.8, maxX: x + w/2 + 0.8, minZ: z - d/2, maxZ: z + d/2, height: h });
+  colliders.push({ minX: x - w/2, maxX: x + w/2, minZ: z - d/2 - 0.8, maxZ: z - d/2 + 0.8, height: h });
 
   enterableStores.push({ x, z, counterX: x, counterZ: z - d/2 + 4.5, name: branchName });
 }
 
-Object.values(TAIWAN_CITIES).forEach((c, idx) => {
-  const colors = [0x991b1b, 0x1e40af, 0x0f766e, 0xb45309, 0x0369a1];
-  // 圓環中央紀念碑 / 地標大樓
-  createSolidBuilding(c.x, c.z, 26, c.h || 20, 26, colors[idx % colors.length], c.landmark, "#b91c1c", false, (idx * 0.4));
-  // 圓環旁可進入超商
-  createEnterableStore(c.x + 68, c.z - 22, c.name + "門市");
+function createCharacterMesh(shirtCol, pantsCol, isPolice = false) {
+  const g = new THREE.Group();
+  const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.32, 1.15, 10), getSharedMat(shirtCol));
+  torso.position.y = 1.42; g.add(torso);
+  const legL = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.12, 0.88, 8), getSharedMat(pantsCol));
+  legL.position.set(-0.18, 0.44, 0); g.add(legL);
+  const legR = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.12, 0.88, 8), getSharedMat(pantsCol));
+  legR.position.set(0.18, 0.44, 0); g.add(legR);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.32, 12, 12), getSharedMat(0xfcd34d));
+  head.position.y = 2.28; g.add(head);
+  const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.36, 0.22, 12), getSharedMat(isPolice ? 0x1e3a8a : 0x1f2937));
+  cap.position.y = 2.48; g.add(cap);
+  return g;
+}
 
-  // 沿著不規則放射街廓散佈旋轉角度各異的透天民宅
-  for (let h = 0; h < 12; h++) {
-    const ang = (h / 12) * Math.PI * 2 + idx * 0.5;
-    const rad = 85 + (h % 3) * 38;
-    const hx = c.x + Math.cos(ang) * rad;
-    const hz = c.z + Math.sin(ang) * rad;
-    if (!isNearAnyRoad(hx, hz, 18)) {
-      const hCols = [0xe2e8f0, 0xfde68a, 0xfed7aa, 0xcbd5e1];
-      createSolidBuilding(hx, hz, 14, 10 + (h % 3) * 3.5, 13, hCols[h % hCols.length], "", "", true, ang + Math.PI / 2);
+Object.values(TAIWAN_CITIES).forEach((c, idx) => {
+  const cityPad = new THREE.Mesh(new THREE.CircleGeometry(235, 28), getSharedMat(0x475569, 0.92));
+  cityPad.rotation.x = -Math.PI / 2; cityPad.position.set(c.x, 0.04, c.z);
+  scene.add(cityPad);
+  dynamicBuildings.push({ mesh: cityPad, x: c.x, z: c.z });
+
+  const colors = [0x991b1b, 0x1e40af, 0x0f766e, 0xb45309, 0x0369a1];
+  createArchitecturalBuilding(c.x, c.z, 26, c.h || 24, 26, colors[idx % colors.length], "tower", c.landmark, "#b91c1c", idx * 0.4);
+  createEnterableStore(c.x + 72, c.z - 22, c.name + "門市");
+
+  const bCols = [0xe2e8f0, 0xfde68a, 0xfed7aa, 0xcbd5e1, 0xdbeafe];
+  for (let gx = -200; gx <= 200; gx += 48) {
+    for (let gz = -200; gz <= 200; gz += 48) {
+      if (Math.hypot(gx, gz) > 215) continue;
+      const bx = c.x + gx + ((gz % 48) * 0.2);
+      const bz = c.z + gz + ((gx % 48) * 0.2);
+      if (!isNearAnyRoadOrCollider(bx, bz, 20, 22)) {
+        const hash = Math.abs(Math.sin(bx * 0.1 + bz * 0.07));
+        const style = hash > 0.55 ? "modern" : "gable";
+        const h = style === "modern" ? (16 + (hash * 24)) : (9 + (hash * 8));
+        createArchitecturalBuilding(bx, bz, 16, h, 16, bCols[Math.floor(hash * 10) % bCols.length], style, "", "#1e293b", hash * 3.14);
+      }
     }
   }
 });
 
 // =========================================================
-// 6. 3D 人物與多車種載具
+// 6. 載具與爆炸特效
 // =========================================================
-function createCharacterMesh(shirtCol, pantsCol, helmet = false) {
-  const g = new THREE.Group();
-  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.85, 1.25, 0.45), new THREE.MeshStandardMaterial({ color: shirtCol }));
-  torso.position.y = 1.45; g.add(torso);
-  const legL = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.9, 0.4), new THREE.MeshStandardMaterial({ color: pantsCol }));
-  legL.position.set(-0.22, 0.45, 0); g.add(legL);
-  const legR = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.9, 0.4), new THREE.MeshStandardMaterial({ color: pantsCol }));
-  legR.position.set(0.22, 0.45, 0); g.add(legR);
-  const head = new THREE.Mesh(
-    new THREE.SphereGeometry(0.34, 14, 14),
-    new THREE.MeshStandardMaterial({ color: helmet ? 0xef4444 : 0xfcd34d })
-  );
-  head.position.y = 2.38; g.add(head);
-  return g;
-}
-
 const playerMesh = createCharacterMesh(0x166534, 0x1e293b, false);
 scene.add(playerMesh);
 
 const player = {
-  x: 740, z: -2465, rotY: 0, speed: 0.36,
+  x: 740, y: 0, z: -2465, rotY: 0, speed: 0.36,
   hp: 100, money: 2000, wanted: 0,
   weapons: [
     { name: "空手 (拳頭)", owned: true, ammo: Infinity, dmg: 25, range: 3.8 },
-    { name: "夜市球棒", owned: false, ammo: Infinity, dmg: 50, range: 4.8 },
-    { name: "9mm 制式手槍", owned: false, ammo: 36, dmg: 65, range: 60 },
-    { name: "衝鋒槍", owned: false, ammo: 90, dmg: 45, range: 70 }
+    { name: "夜市球棒", owned: false, ammo: Infinity, dmg: 45, range: 4.8 },
+    { name: "9mm 制式手槍", owned: false, ammo: 36, dmg: 55, range: 60 },
+    { name: "衝鋒槍", owned: false, ammo: 90, dmg: 40, range: 70 }
   ],
   weaponIdx: 0,
   inVehicle: null
@@ -887,24 +1011,12 @@ const player = {
 const vehicles = [];
 function createDetailedWheel(x, z) {
   const wg = new THREE.Group();
-  const tire = new THREE.Mesh(new THREE.CylinderGeometry(0.44, 0.44, 0.32, 16), new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.8 }));
+  const tire = new THREE.Mesh(new THREE.CylinderGeometry(0.44, 0.44, 0.34, 14), getSharedMat(0x0f172a, 0.8));
   tire.rotation.z = Math.PI / 2;
-  const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.26, 0.34, 12), new THREE.MeshStandardMaterial({ color: 0xcbd5e1, metalness: 0.8, roughness: 0.2 }));
+  const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.36, 10), getSharedMat(0xe2e8f0, 0.2, 0.85));
   rim.rotation.z = Math.PI / 2;
-  wg.add(tire, rim);
-  wg.position.set(x, 0.44, z);
+  wg.add(tire, rim); wg.position.set(x, 0.44, z);
   return wg;
-}
-
-function addCarLights(g, w, d, y = 0.72) {
-  const hlMat = new THREE.MeshBasicMaterial({ color: 0xfef9c3 });
-  const tlMat = new THREE.MeshBasicMaterial({ color: 0xef4444 });
-  [-w*0.32, w*0.32].forEach(lx => {
-    const hl = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.22, 0.1), hlMat);
-    hl.position.set(lx, y, d/2 + 0.04); g.add(hl);
-    const tl = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.22, 0.1), tlMat);
-    tl.position.set(lx, y, -d/2 - 0.04); g.add(tl);
-  });
 }
 
 function spawnVehicle(type, x, z, rotY = 0) {
@@ -912,51 +1024,43 @@ function spawnVehicle(type, x, z, rotY = 0) {
   let name = "轎車", maxSpeed = 0.9, driftAngle = 0;
 
   if (type === "van") {
-    name = "白色商用廂型車"; maxSpeed = 0.85;
-    const body = new THREE.Mesh(new THREE.BoxGeometry(2.3, 1.85, 5.1), new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.35 }));
-    body.position.y = 1.25; g.add(body);
-    const glass = new THREE.Mesh(new THREE.PlaneGeometry(1.95, 0.9), new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.7 }));
-    glass.position.set(0, 1.65, 2.57); glass.rotation.x = -0.22; g.add(glass);
-    addCarLights(g, 2.3, 5.1, 0.85);
+    name = "流線商旅廂型車"; maxSpeed = 0.88;
+    const lower = new THREE.Mesh(new THREE.BoxGeometry(2.26, 0.85, 5.0), new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.3 }));
+    lower.position.y = 0.78; g.add(lower);
+    const upper = new THREE.Mesh(new THREE.CylinderGeometry(1.05, 1.12, 4.6, 12), getSharedMat(0xe2e8f0, 0.3));
+    upper.rotation.x = Math.PI / 2; upper.scale.set(1, 1, 0.72); upper.position.set(0, 1.45, -0.15); g.add(upper);
     g.add(createDetailedWheel(-1.12, 1.65), createDetailedWheel(1.12, 1.65), createDetailedWheel(-1.12, -1.65), createDetailedWheel(1.12, -1.65));
   } else if (type === "taxi") {
-    name = "台灣大車隊小黃"; maxSpeed = 1.0;
-    const lower = new THREE.Mesh(new THREE.BoxGeometry(2.15, 0.75, 4.6), new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.3 }));
-    lower.position.y = 0.72; g.add(lower);
-    const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.85, 0.72, 2.4), new THREE.MeshStandardMaterial({ color: 0xfef08a }));
-    cabin.position.set(0, 1.42, -0.15); g.add(cabin);
-    addCarLights(g, 2.15, 4.6, 0.72);
+    name = "台灣大車隊流線小黃"; maxSpeed = 1.02;
+    const chassis = new THREE.Mesh(new THREE.BoxGeometry(2.12, 0.65, 4.6), new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.25 }));
+    chassis.position.y = 0.65; g.add(chassis);
+    const cabin = new THREE.Mesh(new THREE.CylinderGeometry(0.88, 1.04, 2.4, 12), getSharedMat(0xfef08a, 0.25));
+    cabin.rotation.x = Math.PI / 2; cabin.scale.set(1, 1, 0.65); cabin.position.set(0, 1.25, -0.15); g.add(cabin);
     g.add(createDetailedWheel(-1.06, 1.45), createDetailedWheel(1.06, 1.45), createDetailedWheel(-1.06, -1.45), createDetailedWheel(1.06, -1.45));
   } else if (type === "scooter") {
-    name = "勁戰 125 改裝機車"; maxSpeed = 0.92;
-    const body = new THREE.Mesh(new THREE.BoxGeometry(0.76, 0.85, 2.1), new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.3 }));
-    body.position.y = 0.65; g.add(body);
-    const rider = createCharacterMesh(0xeab308, 0x1e293b, true);
-    rider.scale.set(0.85, 0.85, 0.85); rider.position.set(0, 0.25, -0.1);
-    g.add(rider);
-    g.userData.rider = rider;
+    name = "勁戰 125 運動速克達"; maxSpeed = 0.94;
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.42, 2.0, 12), new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.25 }));
+    body.rotation.x = Math.PI / 2; body.position.y = 0.65; g.add(body);
+    g.add(createDetailedWheel(0, 0.75), createDetailedWheel(0, -0.75));
+    const rider = createCharacterMesh(0xeab308, 0x1e293b, false);
+    rider.scale.set(0.82, 0.82, 0.82); rider.position.set(0, 0.25, -0.1);
+    g.add(rider); g.userData.rider = rider;
   } else if (type === "supercar") {
-    name = "環島渦輪超跑"; maxSpeed = 1.55;
-    const body = new THREE.Mesh(new THREE.BoxGeometry(2.28, 0.72, 4.7), new THREE.MeshStandardMaterial({ color: 0xef4444, metalness: 0.65, roughness: 0.2 }));
-    body.position.y = 0.65; g.add(body);
-    const cockpit = new THREE.Mesh(new THREE.BoxGeometry(1.75, 0.52, 2.1), new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.8 }));
-    cockpit.position.set(0, 1.18, -0.15); g.add(cockpit);
-    const wing = new THREE.Mesh(new THREE.BoxGeometry(2.25, 0.12, 0.38), new THREE.MeshStandardMaterial({ color: 0x0f172a }));
-    wing.position.set(0, 1.32, -2.1); g.add(wing);
-    addCarLights(g, 2.28, 4.7, 0.65);
+    name = "環島雙渦輪超跑"; maxSpeed = 1.62;
+    const body = new THREE.Mesh(new THREE.BoxGeometry(2.26, 0.55, 4.75), new THREE.MeshStandardMaterial({ color: 0xef4444, metalness: 0.7, roughness: 0.18 }));
+    body.position.y = 0.56; g.add(body);
+    const canopy = new THREE.Mesh(new THREE.SphereGeometry(1.02, 14, 10), getSharedMat(0x0f172a, 0.1, 0.9));
+    canopy.scale.set(0.95, 0.52, 1.35); canopy.position.set(0, 0.92, -0.1); g.add(canopy);
     g.add(createDetailedWheel(-1.12, 1.5), createDetailedWheel(1.12, 1.5), createDetailedWheel(-1.12, -1.5), createDetailedWheel(1.12, -1.5));
   } else if (type === "police") {
-    name = "內政部警政署巡邏車"; maxSpeed = 0.68;
-    const lower = new THREE.Mesh(new THREE.BoxGeometry(2.18, 0.78, 4.6), new THREE.MeshStandardMaterial({ color: 0xffffff }));
-    lower.position.y = 0.74; g.add(lower);
-    const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.88, 0.7, 2.3), new THREE.MeshStandardMaterial({ color: 0x0f172a }));
-    cabin.position.set(0, 1.42, -0.15); g.add(cabin);
-    const stripe = new THREE.Mesh(new THREE.BoxGeometry(2.22, 0.38, 4.64), new THREE.MeshBasicMaterial({ color: 0x1d4ed8 }));
-    stripe.position.y = 0.72; g.add(stripe);
-    const siren = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.24, 0.35), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
-    siren.position.set(0, 1.88, -0.1); g.add(siren);
+    name = "警政署國道紅斑馬巡邏車"; maxSpeed = 0.78;
+    const lower = new THREE.Mesh(new THREE.BoxGeometry(2.18, 0.68, 4.65), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.25 }));
+    lower.position.y = 0.66; g.add(lower);
+    const stripe = new THREE.Mesh(new THREE.BoxGeometry(2.22, 0.34, 4.68), new THREE.MeshBasicMaterial({ color: 0xdc2626 }));
+    stripe.position.y = 0.66; g.add(stripe);
+    const siren = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.22, 0.32), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
+    siren.position.set(0, 1.5, -0.1); g.add(siren);
     g.userData.siren = siren;
-    addCarLights(g, 2.18, 4.6, 0.74);
     g.add(createDetailedWheel(-1.08, 1.45), createDetailedWheel(1.08, 1.45), createDetailedWheel(-1.08, -1.45), createDetailedWheel(1.08, -1.45));
   }
 
@@ -964,7 +1068,12 @@ function spawnVehicle(type, x, z, rotY = 0) {
   g.rotation.y = rotY;
   scene.add(g);
 
-  const vObj = { mesh: g, type, name, maxSpeed, speed: 0, driftAngle, isPolice: type === "police", hasOfficer: type === "police" };
+  const vObj = {
+    mesh: g, type, name, maxSpeed, speed: 0,
+    vx: 0, vz: 0, driftAngle, crashCooldown: 0,
+    hp: 3, exploded: false,
+    isPolice: type === "police", hasOfficer: type === "police"
+  };
   vehicles.push(vObj);
   return vObj;
 }
@@ -974,40 +1083,77 @@ Object.values(TAIWAN_CITIES).forEach(c => {
   spawnVehicle("taxi", c.x + 12, c.z + 46, -Math.PI / 2);
   spawnVehicle("scooter", c.x + 46, c.z - 12, 0);
   spawnVehicle("supercar", c.x - 46, c.z + 15, Math.PI);
+  spawnVehicle("police", c.x + 28, c.z + 28, Math.PI * 0.25);
 });
 
-const footCops = [];
-function spawnFootCop(x, z) {
-  const copMesh = createCharacterMesh(0x1e3a8a, 0x0f172a, true);
-  copMesh.position.set(x, 0, z);
-  scene.add(copMesh);
-  footCops.push({ mesh: copMesh, x, z, shootTimer: 45, alive: true });
+const explosions = [];
+function triggerVehicleExplosion(v) {
+  if (v.exploded) return;
+  v.exploded = true;
+  v.hp = 0;
+  v.speed = 0; v.vx = 0; v.vz = 0;
+  v.mesh.children[0].material.color.setHex(0x090d16);
+
+  const x = v.mesh.position.x, y = v.mesh.position.y, z = v.mesh.position.z;
+  const boom = new THREE.Mesh(
+    new THREE.SphereGeometry(1.8, 14, 14),
+    new THREE.MeshBasicMaterial({ color: 0xf97316, transparent: true, opacity: 0.95 })
+  );
+  boom.position.set(x, y + 1.8, z);
+  scene.add(boom);
+  explosions.push({ mesh: boom, scale: 1.0, life: 28 });
+
+  npcs.forEach(n => {
+    if (n.alive && Math.hypot(n.mesh.position.x - x, n.mesh.position.z - z) < 15) {
+      n.hp = 0; n.alive = false; n.mesh.rotation.x = Math.PI / 2; n.bubble.style.display = 'none';
+    }
+  });
+  footCops.forEach(c => {
+    if (c.alive && Math.hypot(c.x - x, c.z - z) < 15) {
+      c.hp = 0; c.alive = false; c.mesh.rotation.x = Math.PI / 2;
+    }
+  });
+  if (Math.hypot(player.x - x, player.z - z) < 12 && !isGodMode && gameMode === 'free') {
+    player.hp -= 55;
+    updateHUD();
+  }
+  if (player.inVehicle === v) {
+    updateCarHPUI(v);
+  }
+}
+
+function damageVehicle(v, amt = 1) {
+  if (v.exploded) return;
+  v.hp -= amt;
+  if (player.inVehicle === v) updateCarHPUI(v);
+  if (v.hp === 2) {
+    v.mesh.children[0].material.color.setHex(0x64748b);
+  } else if (v.hp === 1) {
+    v.mesh.children[0].material.color.setHex(0xea580c);
+  } else if (v.hp <= 0) {
+    triggerVehicleExplosion(v);
+  }
 }
 
 // =========================================================
-// 7. 環島任務 & 路人 NPC
+// 7. 警察追捕 & 路人 NPC
 // =========================================================
-const missions = [
-  { title: "📦 北宜九彎十八拐極速快遞", desc: "搶一台超跑，沿著彎曲的地面 GPS 藍光導航路線衝往【台北 101 大樓】！", startX: 740, startZ: -2475, endX: 460, endZ: -3225, reward: 12000 }
-];
-let activeMission = null;
-
-const missionRing = new THREE.Mesh(
-  new THREE.RingGeometry(2.6, 3.8, 24),
-  new THREE.MeshBasicMaterial({ color: 0xfacc15, side: THREE.DoubleSide })
-);
-missionRing.rotation.x = -Math.PI / 2;
-missionRing.position.set(missions[0].startX, 0.22, missions[0].startZ);
-scene.add(missionRing);
+const footCops = [];
+function spawnFootCop(x, y, z) {
+  const copMesh = createCharacterMesh(0x1e3a8a, 0x0f172a, true);
+  copMesh.position.set(x, y, z);
+  scene.add(copMesh);
+  footCops.push({ mesh: copMesh, x, y, z, hp: 150, shootTimer: 40, alive: true });
+}
 
 const npcs = [];
-const quotes = ["這彎道跟真實北宜公路一模一樣！", "按 M 滾輪放大看圓環跟不規則巷弄！", "GPS 導航線會貼著所有彎道轉折耶！", "Space 鍵過彎甩尾超爽！", "歡迎來到台灣不規則路網開放世界！"];
+const quotes = ["走進黃色任務光圈按 E 就能接任務！", "開車上斜坡交流道就能接高架國道！", "按 M 可以切換真實衛星圖跟戰術圖！", "小心別開太快撞牆或撞到路人喔！", "版權歸 Larry and Alan 所有！"];
 const bubblesLayer = document.getElementById("bubbles-layer");
 
 Object.values(TAIWAN_CITIES).forEach((c, cIdx) => {
-  for (let i = 0; i < 3; i++) {
-    const nx = c.x + (Math.random() - 0.5) * 90;
-    const nz = c.z + (Math.random() - 0.5) * 90;
+  for (let i = 0; i < 4; i++) {
+    const nx = c.x + (Math.random() - 0.5) * 110;
+    const nz = c.z + (Math.random() - 0.5) * 110;
     const mesh = createCharacterMesh(Math.random() > 0.5 ? 0xf8fafc : 0x38bdf8, 0x334155, false);
     mesh.position.set(nx, 0, nz);
     scene.add(mesh);
@@ -1017,25 +1163,65 @@ Object.values(TAIWAN_CITIES).forEach((c, cIdx) => {
     b.innerText = quotes[(cIdx + i) % quotes.length];
     bubblesLayer.appendChild(b);
 
-    npcs.push({ mesh, bubble: b, dir: Math.random() * Math.PI * 2, alive: true });
+    npcs.push({ mesh, bubble: b, hp: 100, dir: Math.random() * Math.PI * 2, alive: true });
   }
 });
 
 // =========================================================
-// 8. 碰撞檢測
+// 8. 12 個環島多樣化任務系統 (走進光圈按 E 接取，不會自動誤觸)
 // =========================================================
-function checkWallCollision(nx, nz, radius = 0.8) {
+const MISSIONS_LIST = [
+  { id: 1, title: "📦 任務 01：北宜九彎十八拐極速快遞", desc: "沿 GPS 藍光導航將加急包裹送往【台北 101 大樓】！", startX: 740, startZ: -2485, endX: 460, endZ: -3225, reward: 12000 },
+  { id: 2, title: "✈️ 任務 02：國一高架機場接送", desc: "開上台北交流道沿國道一號高架衝往【桃園國際機場】！", startX: 460, startZ: -3225, endX: 220, endZ: -2965, reward: 10000 },
+  { id: 3, title: "💻 任務 03：竹科晶圓緊急護送", desc: "將高精密晶圓設備護送至【新竹科學園區】！", startX: 220, startZ: -2965, endX: 40, endZ: -2565, reward: 11000 },
+  { id: 4, title: "🪵 任務 04：苗栗三義木雕藝術特快車", desc: "沿國道南下將參展木雕送抵【苗栗三義】！", startX: 40, startZ: -2565, endX: -120, endZ: -2025, reward: 13000 },
+  { id: 5, title: "🎭 任務 05：臺中國家歌劇院貴賓專車", desc: "前往中台灣文化地標【臺中國家歌劇院】！", startX: -120, startZ: -2025, endX: -280, endZ: -1305, reward: 14000 },
+  { id: 6, title: "🏞️ 任務 06：國六山線日月潭環湖補給", desc: "切入國六山區公路前往內陸明珠【南投日月潭】！", startX: -280, startZ: -1305, endX: 20, endZ: -725, reward: 15000 },
+  { id: 7, title: "🚂 任務 07：阿里山森鐵文物運送", desc: "將百年鐵道文物送往【嘉義噴水圓環】！", startX: -420, startZ: -965, endX: -560, endZ: 275, reward: 16000 },
+  { id: 8, title: "🏯 任務 08：府城古蹟巡禮專線", desc: "前往歷史古都【台南赤崁樓】完成文化打卡！", startX: -560, startZ: 275, endX: -680, endZ: 1235, reward: 15000 },
+  { id: 9, title: "🚢 任務 09：高雄港 85 大樓商務快遞", desc: "沿國道南端直達港都地標【高雄 85 大樓】！", startX: -680, startZ: 1235, endX: -560, endZ: 2135, reward: 14000 },
+  { id: 10, title: "🌴 任務 10：國境之南墾丁海岸遠征", desc: "一路向南奔向台灣最南端【屏東鵝鑾鼻 / 墾丁】！", startX: -560, startZ: 2135, endX: -340, endZ: 2635, reward: 18000 },
+  { id: 11, title: "🌊 任務 11：南迴山海公路台東鐵花村", desc: "穿越蜿蜒南迴公路抵達【台東鐵花村】！", startX: -340, startZ: 2635, endX: 280, endZ: 1635, reward: 22000 },
+  { id: 12, title: "⛰️ 任務 12：花東縱谷太魯閣終極環島", desc: "北上穿越花東縱谷抵達【花蓮太魯閣】，完成全台大環島！", startX: 280, startZ: 1635, endX: 620, endZ: -465, reward: 30000 }
+];
+
+let activeMission = null;
+let nearMissionStarter = null;
+const missionRings = [];
+
+MISSIONS_LIST.forEach(m => {
+  const ring = new THREE.Mesh(
+    new THREE.RingGeometry(2.6, 3.8, 24),
+    new THREE.MeshBasicMaterial({ color: 0xfacc15, side: THREE.DoubleSide })
+  );
+  ring.rotation.x = -Math.PI / 2;
+  ring.position.set(m.startX, 0.22, m.startZ);
+  scene.add(ring);
+  missionRings.push({ mesh: ring, mission: m });
+});
+
+const destRing = new THREE.Mesh(
+  new THREE.RingGeometry(3.2, 4.8, 24),
+  new THREE.MeshBasicMaterial({ color: 0x4ade80, side: THREE.DoubleSide })
+);
+destRing.rotation.x = -Math.PI / 2;
+destRing.visible = false;
+scene.add(destRing);
+
+// =========================================================
+// 9. 高度分層碰撞檢測 (高架車不撞地面矮房)
+// =========================================================
+function checkWallCollision(nx, nz, radius = 0.8, currentY = 0) {
   for (let i = 0; i < colliders.length; i++) {
     const c = colliders[i];
-    if (nx + radius > c.minX && nx - radius < c.maxX && nz + radius > c.minZ && nz - radius < c.maxZ) {
-      return true;
-    }
+    if (currentY >= 4.5 && c.height < 8) continue;
+    if (nx + radius > c.minX && nx - radius < c.maxX && nz + radius > c.minZ && nz - radius < c.maxZ) return true;
   }
   return false;
 }
 
 // =========================================================
-// 9. 輸入控制
+// 10. 輸入控制 (統一按 E 互動)
 // =========================================================
 const keys = {};
 let joyVec = { x: 0, z: 0 };
@@ -1045,13 +1231,29 @@ const enemyBullets = [];
 
 function startGame() {
   isGodMode = document.getElementById('god-mode-check').checked;
-  if (isGodMode) {
+  if (gameMode === 'edu') {
+    isGodMode = true;
+    player.wanted = 0;
+    document.getElementById('stars-hud').style.display = 'none';
+    document.getElementById('weapon-hud').innerText = '模式：🎓 教育觀光導覽 (和平模式)';
+    document.getElementById('weapon-hud').style.color = '#34d399';
+    document.getElementById('mission-title').innerText = '🎓 環遊臺灣：人文地理教育模式';
+    document.getElementById('mission-desc').innerText = '走到黃色光圈按 E 接取觀光打卡任務！靠近各縣市地標會自動顯示地理歷史解說。';
+    document.getElementById('control-hint').innerText = 'WASD / 方向鍵：移動開車 | Space：甩尾\nE：上車/接任務/進超商 | M：雙模式地圖 | T：手機';
+    document.getElementById('m-weapon-btn').style.display = 'none';
+    document.getElementById('m-atk-small').style.display = 'none';
+    document.getElementById('m-atk-big').style.display = 'none';
+    for (let i = vehicles.length - 1; i >= 0; i--) {
+      if (vehicles[i].isPolice) { scene.remove(vehicles[i].mesh); vehicles.splice(i, 1); }
+    }
+  } else if (isGodMode) {
     player.money = 99999999;
     player.hp = 9999;
   }
+
   const sp = TAIWAN_CITIES[selectedCity] || TAIWAN_CITIES.yilan;
   player.x = sp.x;
-  player.z = sp.z - 45; // 出生在圓環北側彎道上
+  player.z = sp.z - 45;
 
   document.getElementById('start-screen').style.display = 'none';
   if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
@@ -1065,10 +1267,10 @@ window.addEventListener('keydown', e => {
   keys[e.code] = true;
   if (!gameStarted) return;
   if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
-  if (e.code === 'KeyF') handleInteract();
+  if (e.code === 'KeyE') handleInteract();
   if (e.code === 'KeyM') toggleBigMap();
   if (e.code === 'KeyT') openPhone();
-  if (e.code === 'Tab') { e.preventDefault(); cycleWeapon(); }
+  if (e.code === 'Tab' && gameMode === 'free') { e.preventDefault(); cycleWeapon(); }
   if (e.code === 'Escape') {
     document.getElementById('big-map-modal').style.display = 'none';
     document.getElementById('side-panel').style.display = 'none';
@@ -1087,7 +1289,7 @@ window.addEventListener('mousemove', e => {
 renderer.domElement.addEventListener('mousedown', e => {
   if (gameStarted && !isPaused && e.button === 0) {
     if (document.pointerLockElement !== renderer.domElement) renderer.domElement.requestPointerLock();
-    doAttack();
+    if (gameMode === 'free') doAttack();
   }
 });
 renderer.domElement.addEventListener('touchstart', e => {
@@ -1125,36 +1327,60 @@ joyZone.addEventListener('touchend', () => {
 });
 
 // =========================================================
-// 10. 互動、免費手機功能、超商購物、攻擊與通緝系統
+// 11. E 鍵統一互動系統 (接任務、上下車、進超商)
 // =========================================================
 let nearVehicle = null, nearStore = null;
 
 function handleInteract() {
   if (isPaused) return;
+  // 1. 優先接取任務 (必須主動按 E 才會開始任務)
+  if (nearMissionStarter && !activeMission) {
+    const m = nearMissionStarter;
+    activeMission = m;
+    document.getElementById('mission-title').innerText = m.title;
+    document.getElementById('mission-desc').innerText = m.desc;
+    destRing.position.set(m.endX, 0.25, m.endZ);
+    destRing.visible = true;
+    computeGPSRoute(m.endX, m.endZ, m.title);
+    return;
+  }
+  // 2. 下車
   if (player.inVehicle) {
     const v = player.inVehicle;
     player.x = v.mesh.position.x + 2.6;
+    player.y = v.mesh.position.y;
     player.z = v.mesh.position.z;
     player.inVehicle = null;
     playerMesh.visible = true;
     document.getElementById('speedometer').style.display = 'none';
     return;
   }
+  // 3. 進超商
   if (nearStore) {
     openStoreMenu(nearStore);
     return;
   }
-  if (nearVehicle) {
+  // 4. 上車
+  if (nearVehicle && !nearVehicle.exploded) {
     player.inVehicle = nearVehicle;
     playerMesh.visible = false;
     document.getElementById('speedometer').style.display = 'block';
+    updateCarHPUI(nearVehicle);
     if (nearVehicle.mesh.userData.rider) nearVehicle.mesh.userData.rider.visible = false;
-    if (!nearVehicle.isPolice && Math.random() < 0.4) addWanted(1);
-    if (nearVehicle.isPolice) addWanted(2);
+    if (gameMode === 'free') {
+      if (!nearVehicle.isPolice && Math.random() < 0.45) addWanted(1);
+      if (nearVehicle.isPolice) addWanted(2);
+    }
   }
 }
 
+function updateCarHPUI(v) {
+  const hearts = "❤️".repeat(Math.max(0, v.hp)) + "🖤".repeat(Math.max(0, 3 - v.hp));
+  document.getElementById('car-hp-txt').innerText = v.exploded ? "💥 車輛已報廢起火" : `車身耐久：${hearts} (${v.hp}/3)`;
+}
+
 function cycleWeapon() {
+  if (gameMode === 'edu') return;
   for (let i = 1; i <= player.weapons.length; i++) {
     const idx = (player.weaponIdx + i) % player.weapons.length;
     if (player.weapons[idx].owned || isGodMode) {
@@ -1166,24 +1392,48 @@ function cycleWeapon() {
 }
 
 function doAttack() {
-  if (isPaused) return;
+  if (isPaused || gameMode === 'edu') return;
   const w = player.weapons[player.weaponIdx];
   const ox = player.inVehicle ? player.inVehicle.mesh.position.x : player.x;
+  const oy = player.inVehicle ? player.inVehicle.mesh.position.y : player.y;
   const oz = player.inVehicle ? player.inVehicle.mesh.position.z : player.z;
   const ang = camYaw + Math.PI;
 
   if (player.weaponIdx <= 1) {
-    playerMesh.position.y = 0.35;
-    setTimeout(() => playerMesh.position.y = 0, 120);
+    playerMesh.position.y = oy + 0.35;
+    setTimeout(() => playerMesh.position.y = player.y, 120);
+
     npcs.forEach(n => {
-      if (n.alive && Math.hypot(n.mesh.position.x - ox, n.mesh.position.z - oz) < w.range) {
-        n.alive = false; n.mesh.rotation.x = Math.PI / 2; n.bubble.style.display = 'none';
-        player.money += 350; addWanted(1); updateHUD();
+      if (!n.alive) return;
+      const dx = n.mesh.position.x - ox, dz = n.mesh.position.z - oz;
+      if (Math.hypot(dx, dz) < w.range) {
+        n.hp -= w.dmg;
+        const pushAng = Math.atan2(dx, dz);
+        const kx = n.mesh.position.x + Math.sin(pushAng) * 1.6;
+        const kz = n.mesh.position.z + Math.cos(pushAng) * 1.6;
+        if (!checkWallCollision(kx, kz, 0.6, 0)) { n.mesh.position.x = kx; n.mesh.position.z = kz; }
+
+        if (n.hp > 0) {
+          n.bubble.innerText = `💢 哎喲！剩餘體力 ${n.hp}%`;
+          n.dir = pushAng;
+        } else {
+          n.alive = false; n.mesh.rotation.x = Math.PI / 2; n.bubble.style.display = 'none';
+          player.money += 350; addWanted(1);
+        }
+        if (Math.random() < 0.45) addWanted(1);
+        updateHUD();
       }
     });
+
     footCops.forEach(c => {
-      if (c.alive && Math.hypot(c.x - ox, c.z - oz) < w.range) {
-        c.alive = false; c.mesh.rotation.x = Math.PI / 2;
+      if (!c.alive) return;
+      const dx = c.x - ox, dz = c.z - oz;
+      if (Math.hypot(dx, dz) < w.range) {
+        c.hp -= w.dmg;
+        const pushAng = Math.atan2(dx, dz);
+        c.x += Math.sin(pushAng) * 1.2; c.z += Math.cos(pushAng) * 1.2;
+        c.mesh.position.set(c.x, c.y, c.z);
+        if (c.hp <= 0) { c.alive = false; c.mesh.rotation.x = Math.PI / 2; }
         addWanted(1); updateHUD();
       }
     });
@@ -1191,54 +1441,74 @@ function doAttack() {
   }
 
   if (!isGodMode) {
-    if (w.ammo <= 0) { alert("子彈已耗盡！請進入 7-TWELVE 超商補充或購買。"); return; }
+    if (w.ammo <= 0) { alert("子彈已耗盡！請進入 7-TWELVE 超商補充。"); return; }
     w.ammo--;
   }
   const bMesh = new THREE.Mesh(new THREE.SphereGeometry(0.18), new THREE.MeshBasicMaterial({ color: 0xfacc15 }));
-  bMesh.position.set(ox, 1.5, oz);
+  bMesh.position.set(ox, oy + 1.5, oz);
   scene.add(bMesh);
-  bullets.push({ mesh: bMesh, vx: Math.sin(ang) * 2.8, vz: Math.cos(ang) * 2.8, life: 45 });
-  if (Math.random() < 0.25) addWanted(1);
+  bullets.push({ mesh: bMesh, vx: Math.sin(ang) * 2.9, vz: Math.cos(ang) * 2.9, dmg: w.dmg, life: 45 });
+  if (Math.random() < 0.3) addWanted(1);
   updateHUD();
 }
 
 function addWanted(amt) {
+  if (gameMode === 'edu') return;
   player.wanted = Math.min(5, player.wanted + amt);
-  const targetCops = Math.min(4, player.wanted);
-  const curCops = vehicles.filter(v => v.isPolice && v.hasOfficer).length;
+  const targetCops = Math.min(6, player.wanted + 1);
+  const curCops = vehicles.filter(v => v.isPolice && v.hasOfficer && !v.exploded).length;
   for (let i = curCops; i < targetCops; i++) {
-    const a = (i * Math.PI * 0.65) + Math.random() * 0.5;
-    spawnVehicle("police", player.x + Math.cos(a) * 55, player.z + Math.sin(a) * 55);
+    const a = (i * (Math.PI * 2 / targetCops)) + Math.random() * 0.4;
+    spawnVehicle("police", player.x + Math.cos(a) * 52, player.z + Math.sin(a) * 52);
   }
   updateHUD();
 }
 
 function updateHUD() {
-  let nearestCity = "台灣不規則山海公路";
+  let nearestCity = "環遊臺灣公路網";
+  let nearestObj = null;
   let minD = Infinity;
   Object.values(TAIWAN_CITIES).forEach(c => {
     const d = Math.hypot(player.x - c.x, player.z - c.z);
-    if (d < minD) { minD = d; nearestCity = c.name; }
+    if (d < minD) { minD = d; nearestCity = c.name; nearestObj = c; }
   });
-  if (minD > 350) nearestCity = player.x > 150 ? "蘇花 / 花東彎道公路" : "西部國道曲折路段";
+  if (minD > 350) nearestCity = player.x > 150 ? "花東海岸山脈公路" : "西部縱貫公路";
 
   document.getElementById('weather-hud').innerText = `☀️ 14:24  29°C  ${nearestCity}`;
   document.getElementById('money-val').innerText = isGodMode ? "∞ 無限" : player.money.toLocaleString();
   document.getElementById('hp-bar').style.width = isGodMode ? "100%" : Math.max(0, player.hp) + "%";
 
-  const w = player.weapons[player.weaponIdx];
-  const ammoTxt = w.ammo === Infinity ? "" : ` (${isGodMode ? '∞' : w.ammo}發)`;
-  document.getElementById('weapon-hud').innerText = `武器：${w.name}${ammoTxt}`;
+  const eduCard = document.getElementById('edu-card');
+  if (gameMode === 'edu' && nearestObj && minD < 140) {
+    eduCard.style.display = 'block';
+    document.getElementById('edu-title').innerText = `🏛️ ${nearestObj.name} — ${nearestObj.landmark}`;
+    document.getElementById('edu-body').innerText = nearestObj.edu;
+  } else {
+    eduCard.style.display = 'none';
+  }
 
-  document.querySelectorAll('#stars-hud span').forEach((s, i) => {
-    s.className = i < player.wanted ? 'active' : '';
-  });
+  if (gameMode === 'free') {
+    const w = player.weapons[player.weaponIdx];
+    const ammoTxt = w.ammo === Infinity ? "" : ` (${isGodMode ? '∞' : w.ammo}發)`;
+    document.getElementById('weapon-hud').innerText = `武器：${w.name}${ammoTxt}`;
+    document.querySelectorAll('#stars-hud span').forEach((s, i) => {
+      s.className = i < player.wanted ? 'active' : '';
+    });
+  }
 }
 
 function openStoreMenu(store) {
   const p = document.getElementById('side-panel');
   p.style.display = 'block';
   updatePauseState();
+  if (gameMode === 'edu') {
+    p.innerHTML = `
+      <div class="panel-title">🏪 7-TWELVE ${store.name}</div>
+      <button class="panel-btn" onclick="buyItem('heal', 0)">🍱 免費領取環島補給便當與飲水<small>教育模式免費補給</small></button>
+      <button class="panel-btn" style="text-align:center; background:#ef4444;" onclick="closePanels()">離開超商</button>
+    `;
+    return;
+  }
   p.innerHTML = `
     <div class="panel-title">🏪 7-TWELVE ${store.name}</div>
     <button class="panel-btn" onclick="buyItem('heal', 150)">🍱 奮起湖便當 + 御茶園 (+50 HP)<small>NT$ 150</small></button>
@@ -1255,26 +1525,24 @@ function openPhone() {
   document.getElementById('big-map-modal').style.display = 'none';
   p.style.display = 'block';
   updatePauseState();
-  let tpButtons = '';
-  Object.entries(TAIWAN_CITIES).forEach(([k, c]) => {
-    tpButtons += `<button class="panel-btn" onclick="navToCity('${k}')">🧭 彎道導航：${c.name} (${c.landmark})<small>沿不規則公路規劃 (免費)</small></button>`;
+  let missionBtns = '';
+  MISSIONS_LIST.forEach(m => {
+    missionBtns += `<button class="panel-btn" onclick="navToPoint(${m.startX}, ${m.startZ}, '${m.title}')">🚩 導航至任務起點：${m.title}<small>獎勵 NT$ ${m.reward.toLocaleString()}</small></button>`;
   });
+  const policeBtn = gameMode === 'free' ? `<button class="panel-btn" onclick="buyItem('clear', 0)">🚓 一鍵消除所有通緝星數<small>免費服務 (NT$ 0)</small></button>` : '';
   p.innerHTML = `
-    <div class="panel-title">📱 台灣智慧通 (全功能免費)</div>
-    <button class="panel-btn" onclick="buyItem('clear', 0)">🚓 一鍵消除所有通緝星數<small>免費服務 (NT$ 0)</small></button>
-    <button class="panel-btn" onclick="buyItem('heal', 0)">❤️ 立即恢復滿血狀態<small>免費服務 (NT$ 0)</small></button>
-    <button class="panel-btn" onclick="buyItem('car', 0)">🏎️ 空投環島渦輪超跑到身旁<small>免費服務 (NT$ 0)</small></button>
-    ${tpButtons}
+    <div class="panel-title">📱 環遊臺灣智慧通 (Larry & Alan)</div>
+    ${policeBtn}
+    <button class="panel-btn" onclick="buyItem('heal', 0)">❤️ 立即恢復滿血與車輛修復<small>免費服務 (NT$ 0)</small></button>
+    <button class="panel-btn" onclick="buyItem('car', 0)">🏎️ 呼叫環島雙渦輪超跑到身旁<small>免費服務 (NT$ 0)</small></button>
+    ${missionBtns}
     <button class="panel-btn" style="text-align:center; background:#475569;" onclick="closePanels()">關閉手機 (繼續遊戲)</button>
   `;
 }
 
-window.navToCity = (cityKey) => {
-  const sp = TAIWAN_CITIES[cityKey];
-  if (sp) {
-    computeGPSRoute(sp.x, sp.z - 45, sp.name);
-    closePanels();
-  }
+window.navToPoint = (tx, tz, label) => {
+  computeGPSRoute(tx, tz, label);
+  closePanels();
 };
 
 function closePanels() {
@@ -1286,7 +1554,13 @@ window.buyItem = (type, cost) => {
   if (!isGodMode && cost > 0 && player.money < cost) { alert("新台幣不足！"); return; }
   if (!isGodMode && cost > 0) player.money -= cost;
 
-  if (type === 'heal') player.hp = isGodMode ? 9999 : 100;
+  if (type === 'heal') {
+    player.hp = isGodMode ? 9999 : 100;
+    if (player.inVehicle && !player.inVehicle.exploded) {
+      player.inVehicle.hp = 3;
+      updateCarHPUI(player.inVehicle);
+    }
+  }
   if (type === 'bat') { player.weapons[1].owned = true; player.weaponIdx = 1; }
   if (type === 'pistol') { player.weapons[2].owned = true; player.weapons[2].ammo += 36; player.weaponIdx = 2; }
   if (type === 'smg') { player.weapons[3].owned = true; player.weapons[3].ammo += 90; player.weaponIdx = 3; }
@@ -1303,14 +1577,199 @@ window.buyItem = (type, cost) => {
 };
 
 // =========================================================
-// 11. 可無段縮放、拖曳平移之台灣不規則路網衛星地圖 (Zoom 1x ~ 8x)
+// 12. 雙模式地圖切換 (真實衛星圖 <-> 遊戲高架交流道戰術圖)
 // =========================================================
-let mapZoom = 1.0;
-let mapPanX = 0;
-let mapPanY = 0;
-let isDraggingMap = false;
-let dragMoved = false;
-let dragStartX = 0, dragStartY = 0;
+let currentMapMode = 'sat'; // 'sat' 或 'game'
+let leafletMap = null, playerMapMarker = null, routeMapPolyline = null, destMapMarker = null;
+
+function switchMapType(mode) {
+  currentMapMode = mode;
+  document.getElementById('tab-sat').className = 'm-tab-btn' + (mode === 'sat' ? ' active' : '');
+  document.getElementById('tab-game').className = 'm-tab-btn' + (mode === 'game' ? ' active' : '');
+  const lDiv = document.getElementById('leaflet-map');
+  const gCan = document.getElementById('game-vector-canvas');
+
+  if (mode === 'sat') {
+    lDiv.style.display = 'block';
+    gCan.style.display = 'none';
+    initLeafletMap();
+    setTimeout(() => { leafletMap.invalidateSize(); syncAllMaps(); }, 40);
+  } else {
+    lDiv.style.display = 'none';
+    gCan.style.display = 'block';
+    drawGameVectorMap();
+  }
+}
+
+function initLeafletMap() {
+  if (leafletMap) return;
+  leafletMap = L.map('leaflet-map', { zoomControl: true }).setView([23.75, 120.95], 8);
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }).addTo(leafletMap);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(leafletMap);
+
+  Object.values(TAIWAN_CITIES).forEach(c => {
+    const marker = L.circleMarker([c.lat, c.lng], { radius: 6, color: '#fff', weight: 2, fillColor: '#f59e0b', fillOpacity: 0.95 }).addTo(leafletMap);
+    marker.bindTooltip(`<b>${c.name}</b><br>${c.landmark}`, { direction: 'top' });
+    marker.on('click', (e) => { L.DomEvent.stopPropagation(e); computeGPSRoute(c.x, c.z - 45, c.name); });
+  });
+
+  playerMapMarker = L.circleMarker(worldToLatLng(player.x, player.z), {
+    radius: 9, color: '#fff', weight: 3, fillColor: '#22c55e', fillOpacity: 1
+  }).addTo(leafletMap).bindTooltip("📍 你的目前位置", { permanent: true, direction: 'bottom' });
+
+  let clickTimer = null;
+  leafletMap.on('click', (e) => {
+    clearTimeout(clickTimer);
+    clickTimer = setTimeout(() => {
+      const wPos = latLngToWorld(e.latlng.lat, e.latlng.lng);
+      computeGPSRoute(wPos.x, wPos.z);
+    }, 220);
+  });
+  leafletMap.on('dblclick', (e) => {
+    clearTimeout(clickTimer);
+    const wPos = latLngToWorld(e.latlng.lat, e.latlng.lng);
+    teleportPlayerTo(wPos.x, wPos.z);
+  });
+}
+
+function teleportPlayerTo(wx, wz) {
+  if (player.inVehicle) {
+    player.inVehicle.mesh.position.set(wx, 0, wz);
+    player.inVehicle.vx = 0; player.inVehicle.vz = 0; player.inVehicle.speed = 0;
+  }
+  player.x = wx; player.y = 0; player.z = wz;
+  syncAllMaps();
+  updateHUD();
+}
+
+// 遊戲向量戰術公路網繪製 (可切換至遊戲內部高架國道與交流道視角)
+const gvCanvas = document.getElementById('game-vector-canvas');
+const gvCtx = gvCanvas.getContext('2d');
+let gvZoom = 1.0, gvPanX = 0, gvPanY = 0, gvDrag = false, gvMoved = false, gvStartX = 0, gvStartY = 0;
+
+function gvWorldToScreen(wx, wz) {
+  return { mx: 480 + (wx / 1400) * 320, my: 360 + (wz / 3800) * 330 };
+}
+function gvScreenToWorld(clientX, clientY) {
+  const rect = gvCanvas.getBoundingClientRect();
+  const cx = ((clientX - rect.left) / rect.width) * 960;
+  const cy = ((clientY - rect.top) / rect.height) * 720;
+  const bx = (cx - gvPanX) / gvZoom, by = (cy - gvPanY) / gvZoom;
+  return { x: ((bx - 480) / 320) * 1400, z: ((by - 360) / 330) * 3800 };
+}
+
+gvCanvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  const factor = e.deltaY < 0 ? 1.25 : 0.8;
+  gvZoom = Math.max(1.0, Math.min(7.0, gvZoom * factor));
+  if (gvZoom === 1.0) { gvPanX = 0; gvPanY = 0; }
+  drawGameVectorMap();
+}, { passive: false });
+gvCanvas.addEventListener('mousedown', e => { gvDrag = true; gvMoved = false; gvStartX = e.clientX; gvStartY = e.clientY; });
+window.addEventListener('mousemove', e => {
+  if (!gvDrag) return;
+  const rect = gvCanvas.getBoundingClientRect();
+  const dx = ((e.clientX - gvStartX) / rect.width) * 960;
+  const dy = ((e.clientY - gvStartY) / rect.height) * 720;
+  if (Math.hypot(dx, dy) > 3) gvMoved = true;
+  gvPanX += dx; gvPanY += dy; gvStartX = e.clientX; gvStartY = e.clientY;
+  drawGameVectorMap();
+});
+window.addEventListener('mouseup', e => {
+  if (!gvDrag) return;
+  gvDrag = false;
+  if (!gvMoved && e.target === gvCanvas) {
+    const dest = gvScreenToWorld(e.clientX, e.clientY);
+    computeGPSRoute(dest.x, dest.z);
+  }
+});
+gvCanvas.addEventListener('dblclick', e => {
+  const dest = gvScreenToWorld(e.clientX, e.clientY);
+  teleportPlayerTo(dest.x, dest.z);
+});
+
+function drawGameVectorMap() {
+  gvCtx.clearRect(0, 0, 960, 720);
+  gvCtx.save();
+  gvCtx.translate(gvPanX, gvPanY);
+  gvCtx.scale(gvZoom, gvZoom);
+
+  gvCtx.fillStyle = "#081c34"; gvCtx.fillRect(-1000, -1000, 3000, 3000);
+  gvCtx.beginPath();
+  TAIWAN_POLYGON.forEach(([px, pz], idx) => {
+    const { mx, my } = gvWorldToScreen(px, pz);
+    if (idx === 0) gvCtx.moveTo(mx, my); else gvCtx.lineTo(mx, my);
+  });
+  gvCtx.closePath();
+  gvCtx.fillStyle = "#2d4c1e"; gvCtx.fill();
+  gvCtx.strokeStyle = "#84cc16"; gvCtx.lineWidth = 2 / gvZoom; gvCtx.stroke();
+
+  // 繪製高架高速公路與市區路網
+  irregularRoadPolylines.forEach(poly => {
+    if (!poly.isHighway && gvZoom < 1.5) return;
+    gvCtx.strokeStyle = poly.elevated ? "#facc15" : (poly.isHighway ? "#38bdf8" : "#94a3b8");
+    gvCtx.lineWidth = poly.isHighway ? (2.6 / Math.sqrt(gvZoom)) : (1.4 / gvZoom);
+    gvCtx.beginPath();
+    poly.pts.forEach((pt, i) => {
+      const p = gvWorldToScreen(pt.x, pt.z);
+      if (i === 0) gvCtx.moveTo(p.mx, p.my); else gvCtx.lineTo(p.mx, p.my);
+    });
+    gvCtx.stroke();
+  });
+
+  // 標示立體交流道匝道點 (紫色菱形)
+  interchangeRamps.forEach(r => {
+    const p = gvWorldToScreen(r.x1, r.z1);
+    gvCtx.fillStyle = "#c084fc";
+    gvCtx.fillRect(p.mx - 3 / gvZoom, p.my - 3 / gvZoom, 6 / gvZoom, 6 / gvZoom);
+  });
+
+  // 繪製 12 個可接任務起點 (黃旗)
+  MISSIONS_LIST.forEach(m => {
+    const mp = gvWorldToScreen(m.startX, m.startZ);
+    gvCtx.fillStyle = "#fde047";
+    gvCtx.beginPath(); gvCtx.arc(mp.mx, mp.my, 4.5 / Math.sqrt(gvZoom), 0, Math.PI * 2); gvCtx.fill();
+  });
+
+  // 導航路線
+  if (activeNavRoute.length >= 2) {
+    gvCtx.strokeStyle = "#38bdf8"; gvCtx.lineWidth = 5 / gvZoom;
+    gvCtx.beginPath();
+    activeNavRoute.forEach((pt, idx) => {
+      const p = gvWorldToScreen(pt.x, pt.z);
+      if (idx === 0) gvCtx.moveTo(p.mx, p.my); else gvCtx.lineTo(p.mx, p.my);
+    });
+    gvCtx.stroke();
+  }
+
+  Object.values(TAIWAN_CITIES).forEach(c => {
+    const { mx, my } = gvWorldToScreen(c.x, c.z);
+    gvCtx.fillStyle = "#fff"; gvCtx.font = `bold ${11 / Math.sqrt(gvZoom)}px Microsoft JhengHei`;
+    gvCtx.fillText(c.name.split(" ")[0], mx + 5 / gvZoom, my + 4 / gvZoom);
+  });
+
+  const pp = gvWorldToScreen(player.x, player.z);
+  gvCtx.fillStyle = "#22c55e";
+  gvCtx.beginPath(); gvCtx.arc(pp.mx, pp.my, 6 / Math.sqrt(gvZoom), 0, Math.PI * 2); gvCtx.fill();
+  gvCtx.restore();
+}
+
+function syncAllMaps() {
+  if (leafletMap) {
+    const pLL = worldToLatLng(player.x, player.z);
+    if (playerMapMarker) playerMapMarker.setLatLng(pLL);
+    if (routeMapPolyline) { leafletMap.removeLayer(routeMapPolyline); routeMapPolyline = null; }
+    if (destMapMarker) { leafletMap.removeLayer(destMapMarker); destMapMarker = null; }
+    if (activeNavRoute.length >= 2) {
+      const latLngs = activeNavRoute.map(pt => worldToLatLng(pt.x, pt.z));
+      routeMapPolyline = L.polyline(latLngs, { color: '#38bdf8', weight: 6, opacity: 0.95 }).addTo(leafletMap);
+      destMapMarker = L.circleMarker(latLngs[latLngs.length - 1], {
+        radius: 8, color: '#fff', weight: 2, fillColor: '#ef4444', fillOpacity: 1
+      }).addTo(leafletMap).bindTooltip(`🚩 終點：${navDestinationName}`, { permanent: true, direction: 'top' });
+    }
+  }
+  if (currentMapMode === 'game') drawGameVectorMap();
+}
 
 function toggleBigMap() {
   const modal = document.getElementById('big-map-modal');
@@ -1318,339 +1777,57 @@ function toggleBigMap() {
   document.getElementById('side-panel').style.display = 'none';
   modal.style.display = willOpen ? 'flex' : 'none';
   updatePauseState();
-  if (willOpen) drawBigMap();
+  if (willOpen) switchMapType(currentMapMode);
 }
 
-function zoomMap(factor, centerX = 280, centerY = 440) {
-  const oldZoom = mapZoom;
-  mapZoom = Math.max(1.0, Math.min(8.0, mapZoom * factor));
-  if (mapZoom === 1.0) {
-    mapPanX = 0;
-    mapPanY = 0;
-  } else {
-    const scaleChange = mapZoom / oldZoom;
-    mapPanX = centerX - (centerX - mapPanX) * scaleChange;
-    mapPanY = centerY - (centerY - mapPanY) * scaleChange;
-  }
-  document.getElementById('zoom-level-txt').innerText = mapZoom.toFixed(1) + 'x';
-  drawBigMap();
-}
-
-function resetMapView() {
-  mapZoom = 1.0; mapPanX = 0; mapPanY = 0;
-  document.getElementById('zoom-level-txt').innerText = '1.0x';
-  drawBigMap();
-}
-
-const bigCanvas = document.getElementById('big-map-canvas');
-const bCtx = bigCanvas.getContext('2d');
-
-function baseWorldToMap(wx, wz) {
-  return {
-    mx: 280 + (wx / 1400) * 260,
-    my: 440 + (wz / 3800) * 410
-  };
-}
-function screenToWorld(clientX, clientY) {
-  const rect = bigCanvas.getBoundingClientRect();
-  const canvasX = ((clientX - rect.left) / rect.width) * 560;
-  const canvasY = ((clientY - rect.top) / rect.height) * 880;
-  const baseMx = (canvasX - mapPanX) / mapZoom;
-  const baseMy = (canvasY - mapPanY) / mapZoom;
-  return {
-    x: ((baseMx - 280) / 260) * 1400,
-    z: ((baseMy - 440) / 410) * 3800
-  };
-}
-
-bigCanvas.addEventListener('wheel', e => {
-  e.preventDefault();
-  const rect = bigCanvas.getBoundingClientRect();
-  const cx = ((e.clientX - rect.left) / rect.width) * 560;
-  const cy = ((e.clientY - rect.top) / rect.height) * 880;
-  zoomMap(e.deltaY < 0 ? 1.25 : 0.8, cx, cy);
-}, { passive: false });
-
-bigCanvas.addEventListener('mousedown', e => {
-  isDraggingMap = true;
-  dragMoved = false;
-  dragStartX = e.clientX;
-  dragStartY = e.clientY;
-});
-
-window.addEventListener('mousemove', e => {
-  if (!isDraggingMap) return;
-  const rect = bigCanvas.getBoundingClientRect();
-  const dx = ((e.clientX - dragStartX) / rect.width) * 560;
-  const dy = ((e.clientY - dragStartY) / rect.height) * 880;
-  if (Math.hypot(dx, dy) > 3) dragMoved = true;
-  mapPanX += dx;
-  mapPanY += dy;
-  dragStartX = e.clientX;
-  dragStartY = e.clientY;
-  drawBigMap();
-});
-
-window.addEventListener('mouseup', e => {
-  if (!isDraggingMap) return;
-  isDraggingMap = false;
-  if (!dragMoved && e.target === bigCanvas) {
-    const dest = screenToWorld(e.clientX, e.clientY);
-    computeGPSRoute(dest.x, dest.z);
-    drawBigMap();
-  }
-});
-
-bigCanvas.addEventListener('dblclick', e => {
-  const dest = screenToWorld(e.clientX, e.clientY);
-  if (player.inVehicle) player.inVehicle.mesh.position.set(dest.x, 0, dest.z);
-  player.x = dest.x; player.z = dest.z;
-  if (activeNavRoute.length > 0) computeGPSRoute(activeNavRoute[activeNavRoute.length - 1].x, activeNavRoute[activeNavRoute.length - 1].z, navDestinationName);
-  drawBigMap();
-  updateHUD();
-});
-
-let lastPinchDist = null;
-bigCanvas.addEventListener('touchstart', e => {
-  if (e.touches.length === 1) {
-    isDraggingMap = true; dragMoved = false;
-    dragStartX = e.touches[0].clientX; dragStartY = e.touches[0].clientY;
-  } else if (e.touches.length === 2) {
-    lastPinchDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-  }
-});
-bigCanvas.addEventListener('touchmove', e => {
-  e.preventDefault();
-  if (e.touches.length === 1 && isDraggingMap) {
-    const rect = bigCanvas.getBoundingClientRect();
-    const dx = ((e.touches[0].clientX - dragStartX) / rect.width) * 560;
-    const dy = ((e.touches[0].clientY - dragStartY) / rect.height) * 880;
-    if (Math.hypot(dx, dy) > 3) dragMoved = true;
-    mapPanX += dx; mapPanY += dy;
-    dragStartX = e.touches[0].clientX; dragStartY = e.touches[0].clientY;
-    drawBigMap();
-  } else if (e.touches.length === 2 && lastPinchDist) {
-    const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-    zoomMap(d / lastPinchDist);
-    lastPinchDist = d;
-  }
-}, { passive: false });
-bigCanvas.addEventListener('touchend', e => {
-  if (isDraggingMap && !dragMoved && e.changedTouches.length === 1) {
-    const t = e.changedTouches[0];
-    const dest = screenToWorld(t.clientX, t.clientY);
-    computeGPSRoute(dest.x, dest.z);
-    drawBigMap();
-  }
-  isDraggingMap = false; lastPinchDist = null;
-});
-
-function drawBigMap() {
-  bCtx.clearRect(0, 0, 560, 880);
-  bCtx.save();
-  bCtx.translate(mapPanX, mapPanY);
-  bCtx.scale(mapZoom, mapZoom);
-
-  // 1. 衛星海洋漸層背景
-  const seaGrad = bCtx.createLinearGradient(0, 0, 560, 0);
-  seaGrad.addColorStop(0, "#1d4ed8");
-  seaGrad.addColorStop(0.45, "#1e40af");
-  seaGrad.addColorStop(0.65, "#0f172a");
-  seaGrad.addColorStop(1, "#091326");
-  bCtx.fillStyle = seaGrad;
-  bCtx.fillRect(-1000, -1000, 3000, 3000);
-
-  // 2. 不規則台灣本島輪廓
-  bCtx.save();
-  bCtx.beginPath();
-  TAIWAN_POLYGON.forEach(([px, pz], idx) => {
-    const { mx, my } = baseWorldToMap(px, pz);
-    if (idx === 0) bCtx.moveTo(mx, my);
-    else bCtx.lineTo(mx, my);
-  });
-  bCtx.closePath();
-
-  const landGrad = bCtx.createLinearGradient(110, 0, 440, 0);
-  landGrad.addColorStop(0, "#4d7c0f");
-  landGrad.addColorStop(0.35, "#365314");
-  landGrad.addColorStop(0.65, "#143318");
-  landGrad.addColorStop(1, "#2f5219");
-  bCtx.fillStyle = landGrad;
-  bCtx.fill();
-  bCtx.strokeStyle = "#84cc16";
-  bCtx.lineWidth = 2 / mapZoom;
-  bCtx.stroke();
-
-  // 3. 中央山脈陰影
-  bCtx.clip();
-  bCtx.fillStyle = "rgba(10, 28, 14, 0.55)";
-  for (let sy = 120; sy < 760; sy += 26) {
-    bCtx.beginPath();
-    bCtx.ellipse(315 - (sy - 400) * 0.12, sy, 48, 18, 0.3, 0, Math.PI * 2);
-    bCtx.fill();
-  }
-
-  // 4. 繪製全台灣不規則蜿蜒高速公路與縣市圓環放射路網
-  irregularRoadPolylines.forEach(poly => {
-    if (!poly.isHighway && mapZoom < 1.6) return;
-    bCtx.strokeStyle = poly.isHighway ? poly.color : "#94a3b8";
-    bCtx.lineWidth = poly.isHighway
-      ? Math.max(1.2, 2.5 / Math.sqrt(mapZoom))
-      : Math.max(0.8, 1.8 / mapZoom);
-    bCtx.lineCap = "round";
-    bCtx.lineJoin = "round";
-    bCtx.beginPath();
-    poly.pts.forEach((pt, i) => {
-      const p = baseWorldToMap(pt.x, pt.z);
-      if (i === 0) bCtx.moveTo(p.mx, p.my);
-      else bCtx.lineTo(p.mx, p.my);
-    });
-    bCtx.stroke();
-  });
-
-  // 5. 放大超過 2.0x 時，繪製各縣市旋轉角度各異的不規則街廓建築
-  if (mapZoom >= 2.0) {
-    bCtx.fillStyle = "#cbd5e1";
-    colliders.forEach(c => {
-      const p = baseWorldToMap(c.minX, c.minZ);
-      const cw = ((c.maxX - c.minX) / 1400) * 260;
-      const cd = ((c.maxZ - c.minZ) / 3800) * 410;
-      bCtx.fillRect(p.mx, p.my, cw, cd);
-    });
-  }
-  bCtx.restore();
-
-  // 離島
-  const islands = [
-    { name: "澎湖", mx: 65, my: 510, r: 9 },
-    { name: "小琉球", mx: 155, my: 725, r: 4 },
-    { name: "綠島", mx: 410, my: 645, r: 5 },
-    { name: "蘭嶼", mx: 425, my: 745, r: 6 }
-  ];
-  islands.forEach(isl => {
-    bCtx.fillStyle = "#365314"; bCtx.strokeStyle = "#84cc16"; bCtx.lineWidth = 1.5 / mapZoom;
-    bCtx.beginPath(); bCtx.arc(isl.mx, isl.my, isl.r, 0, Math.PI * 2); bCtx.fill(); bCtx.stroke();
-    bCtx.fillStyle = "#cbd5e1"; bCtx.font = `${Math.max(8, 11 / Math.sqrt(mapZoom))}px Microsoft JhengHei`;
-    bCtx.fillText(isl.name, isl.mx + 10, isl.my + 4);
-  });
-
-  // 6. 繪製沿著不規則彎道轉折的 GPS 導航發光路線
-  if (activeNavRoute.length >= 2) {
-    bCtx.save();
-    bCtx.strokeStyle = "#0ea5e9";
-    bCtx.lineWidth = 7 / mapZoom;
-    bCtx.lineCap = "round";
-    bCtx.lineJoin = "round";
-    bCtx.beginPath();
-    activeNavRoute.forEach((pt, idx) => {
-      const p = baseWorldToMap(pt.x, pt.z);
-      if (idx === 0) bCtx.moveTo(p.mx, p.my);
-      else bCtx.lineTo(p.mx, p.my);
-    });
-    bCtx.stroke();
-
-    bCtx.strokeStyle = "#e0f2fe";
-    bCtx.lineWidth = 2.8 / mapZoom;
-    bCtx.stroke();
-
-    const dest = activeNavRoute[activeNavRoute.length - 1];
-    const dp = baseWorldToMap(dest.x, dest.z);
-    bCtx.fillStyle = "#ef4444";
-    bCtx.beginPath(); bCtx.arc(dp.mx, dp.my, 8 / mapZoom, 0, Math.PI * 2); bCtx.fill();
-    bCtx.strokeStyle = "#fff"; bCtx.lineWidth = 2 / mapZoom; bCtx.stroke();
-    bCtx.fillStyle = "#fca5a5"; bCtx.font = `bold ${12 / Math.sqrt(mapZoom)}px Microsoft JhengHei`;
-    bCtx.fillText("🚩 導航終點", dp.mx + 8 / mapZoom, dp.my + 4 / mapZoom);
-    bCtx.restore();
-  }
-
-  // 7. 全台灣 16 縣市地標文字
-  const fontScale = Math.sqrt(mapZoom);
-  Object.values(TAIWAN_CITIES).forEach(c => {
-    const { mx, my } = baseWorldToMap(c.x, c.z);
-    bCtx.fillStyle = "#ffffff";
-    bCtx.beginPath(); bCtx.arc(mx, my, 3.2 / fontScale, 0, Math.PI * 2); bCtx.fill();
-    bCtx.strokeStyle = "#000"; bCtx.lineWidth = 2.5 / fontScale;
-    bCtx.font = `bold ${12 / fontScale}px Microsoft JhengHei`;
-    const labelTxt = mapZoom > 2.2 ? `${c.name.split(" ")[0]} (${c.landmark})` : c.name.split(" ")[0];
-    bCtx.strokeText(labelTxt, mx + 5 / fontScale, my + 4 / fontScale);
-    bCtx.fillText(labelTxt, mx + 5 / fontScale, my + 4 / fontScale);
-  });
-
-  // 8. 玩家即時座標光點
-  const pPos = baseWorldToMap(player.x, player.z);
-  bCtx.fillStyle = "#22c55e";
-  bCtx.beginPath(); bCtx.arc(pPos.mx, pPos.my, 7 / fontScale, 0, Math.PI * 2); bCtx.fill();
-  bCtx.strokeStyle = "#ffffff"; bCtx.lineWidth = 2 / fontScale; bCtx.stroke();
-  bCtx.fillStyle = "#fde047"; bCtx.font = `bold ${12 / fontScale}px Microsoft JhengHei`;
-  bCtx.fillText("📍 你的位置", pPos.mx - 26 / fontScale, pPos.my - 10 / fontScale);
-
-  bCtx.restore();
+function openExternalGoogleMaps() {
+  const [lat, lng] = worldToLatLng(player.x, player.z);
+  window.open(`https://www.google.com/maps/@${lat.toFixed(5)},${lng.toFixed(5)},14z/data=!3m1!1e3`, '_blank');
 }
 
 const miniCtx = document.getElementById('minimap').getContext('2d');
 function drawMinimap() {
-  miniCtx.fillStyle = "#1e293b"; miniCtx.fillRect(0, 0, 150, 150);
-  miniCtx.save(); miniCtx.translate(75, 75); miniCtx.rotate(camYaw);
+  miniCtx.fillStyle = "#1e293b"; miniCtx.fillRect(0, 0, 146, 146);
+  miniCtx.save(); miniCtx.translate(73, 73); miniCtx.rotate(camYaw);
   const s = 0.65;
 
-  // 小地圖同步渲染不規則彎曲道路
-  miniCtx.strokeStyle = "#64748b";
-  miniCtx.lineCap = "round";
-  miniCtx.lineJoin = "round";
   irregularRoadPolylines.forEach(poly => {
     const p0 = poly.pts[0];
     if (Math.abs(p0.x - player.x) > 900 && Math.abs(p0.z - player.z) > 900) return;
+    miniCtx.strokeStyle = poly.elevated ? "#facc15" : "#64748b";
     miniCtx.lineWidth = poly.width * s;
     miniCtx.beginPath();
     poly.pts.forEach((pt, idx) => {
-      const rx = (pt.x - player.x) * s;
-      const rz = (pt.z - player.z) * s;
-      if (idx === 0) miniCtx.moveTo(rx, rz);
-      else miniCtx.lineTo(rx, rz);
+      const rx = (pt.x - player.x) * s, rz = (pt.z - player.z) * s;
+      if (idx === 0) miniCtx.moveTo(rx, rz); else miniCtx.lineTo(rx, rz);
     });
     miniCtx.stroke();
   });
 
-  miniCtx.fillStyle = "#0ea5e9";
-  colliders.forEach(c => {
-    if (Math.abs(c.minX - player.x) < 160 && Math.abs(c.minZ - player.z) < 160) {
-      miniCtx.fillRect((c.minX - player.x) * s, (c.minZ - player.z) * s, (c.maxX - c.minX) * s, (c.maxZ - c.minZ) * s);
-    }
-  });
-
   if (activeNavRoute.length >= 2) {
-    miniCtx.strokeStyle = "#38bdf8";
-    miniCtx.lineWidth = 4;
+    miniCtx.strokeStyle = "#38bdf8"; miniCtx.lineWidth = 4;
     miniCtx.beginPath();
     activeNavRoute.forEach((pt, idx) => {
-      const rx = (pt.x - player.x) * s;
-      const rz = (pt.z - player.z) * s;
-      if (idx === 0) miniCtx.moveTo(rx, rz);
-      else miniCtx.lineTo(rx, rz);
+      const rx = (pt.x - player.x) * s, rz = (pt.z - player.z) * s;
+      if (idx === 0) miniCtx.moveTo(rx, rz); else miniCtx.lineTo(rx, rz);
     });
     miniCtx.stroke();
   }
 
   vehicles.forEach(v => {
-    if (Math.abs(v.mesh.position.x - player.x) < 160 && Math.abs(v.mesh.position.z - player.z) < 160) {
+    if (!v.exploded && Math.abs(v.mesh.position.x - player.x) < 160 && Math.abs(v.mesh.position.z - player.z) < 160) {
       miniCtx.fillStyle = v.isPolice ? "#ef4444" : "#facc15";
       miniCtx.beginPath(); miniCtx.arc((v.mesh.position.x - player.x) * s, (v.mesh.position.z - player.z) * s, 3.5, 0, Math.PI * 2); miniCtx.fill();
-    }
-  });
-  footCops.forEach(c => {
-    if (c.alive && Math.abs(c.x - player.x) < 160 && Math.abs(c.z - player.z) < 160) {
-      miniCtx.fillStyle = "#3b82f6";
-      miniCtx.beginPath(); miniCtx.arc((c.x - player.x) * s, (c.z - player.z) * s, 3, 0, Math.PI * 2); miniCtx.fill();
     }
   });
   miniCtx.restore();
 
   miniCtx.fillStyle = "#fff";
-  miniCtx.beginPath(); miniCtx.moveTo(75, 68); miniCtx.lineTo(80, 80); miniCtx.lineTo(75, 77); miniCtx.lineTo(70, 80); miniCtx.closePath(); miniCtx.fill();
+  miniCtx.beginPath(); miniCtx.moveTo(73, 66); miniCtx.lineTo(78, 78); miniCtx.lineTo(73, 75); miniCtx.lineTo(68, 78); miniCtx.closePath(); miniCtx.fill();
 }
 
 // =========================================================
-// 12. 主遊戲循環
+// 13. 主遊戲循環 (交流道爬升、車撞人致死、高速撞牆爆炸、E鍵任務)
 // =========================================================
 let tick = 0;
 function animate() {
@@ -1658,11 +1835,10 @@ function animate() {
   if (!gameStarted || isPaused) { renderer.render(scene, camera); return; }
   tick++;
 
-  // 動態視距串流優化 (建築 + 不規則道路區塊)
   if (tick % 10 === 0) {
     for (let i = 0; i < dynamicBuildings.length; i++) {
       const b = dynamicBuildings[i];
-      b.mesh.visible = (Math.abs(b.x - player.x) < 500 && Math.abs(b.z - player.z) < 500);
+      b.mesh.visible = (Math.abs(b.x - player.x) < 460 && Math.abs(b.z - player.z) < 460);
     }
     for (let i = 0; i < dynamicRoadChunks.length; i++) {
       const r = dynamicRoadChunks[i];
@@ -1677,6 +1853,7 @@ function animate() {
   const rightInput = keys['KeyD'] || keys['ArrowRight'] || joyVec.x > 0.2;
   const driftInput = keys['Space'];
 
+  // 步行移動
   if (!player.inVehicle) {
     let mx = 0, mz = 0;
     const fwdX = -Math.sin(camYaw), fwdZ = -Math.cos(camYaw);
@@ -1691,47 +1868,163 @@ function animate() {
       const len = Math.hypot(mx, mz);
       const stepX = (mx / len) * player.speed;
       const stepZ = (mz / len) * player.speed;
-      if (!checkWallCollision(player.x + stepX, player.z, 0.75)) player.x += stepX;
-      if (!checkWallCollision(player.x, player.z + stepZ, 0.75)) player.z += stepZ;
+      if (!checkWallCollision(player.x + stepX, player.z, 0.75, player.y)) player.x += stepX;
+      if (!checkWallCollision(player.x, player.z + stepZ, 0.75, player.y)) player.z += stepZ;
       player.rotY = Math.atan2(mx, mz);
     }
-    playerMesh.position.set(player.x, 0, player.z);
+    const targetY = getSurfaceElevation(player.x, player.z, player.y);
+    player.y += (targetY - player.y) * 0.25;
+    playerMesh.position.set(player.x, player.y, player.z);
     playerMesh.rotation.y = player.rotY;
   } else {
     const v = player.inVehicle;
-    if (upInput) v.speed = Math.min(v.maxSpeed, v.speed + 0.036);
-    else if (downInput) v.speed = Math.max(-v.maxSpeed * 0.4, v.speed - 0.038);
-    else v.speed *= 0.965;
+    if (!v.exploded) {
+      if (upInput) v.speed = Math.min(v.maxSpeed, v.speed + 0.036);
+      else if (downInput) v.speed = Math.max(-v.maxSpeed * 0.4, v.speed - 0.038);
+      else v.speed *= 0.965;
 
-    const isDrifting = driftInput && Math.abs(v.speed) > 0.35 && (leftInput || rightInput);
-    document.getElementById('drift-badge').style.display = isDrifting ? 'block' : 'none';
+      const isDrifting = driftInput && Math.abs(v.speed) > 0.35 && (leftInput || rightInput);
+      document.getElementById('drift-badge').style.display = isDrifting ? 'block' : 'none';
 
-    if (Math.abs(v.speed) > 0.02) {
-      const dir = v.speed >= 0 ? 1 : -1;
-      const turnRate = isDrifting ? 0.075 : 0.042;
-      if (leftInput) v.mesh.rotation.y += turnRate * dir;
-      if (rightInput) v.mesh.rotation.y -= turnRate * dir;
-    }
+      if (Math.abs(v.speed) > 0.02) {
+        const dir = v.speed >= 0 ? 1 : -1;
+        const turnRate = isDrifting ? 0.075 : 0.042;
+        if (leftInput) v.mesh.rotation.y += turnRate * dir;
+        if (rightInput) v.mesh.rotation.y -= turnRate * dir;
+      }
 
-    const targetSlip = isDrifting ? (leftInput ? -0.35 : 0.35) : 0;
-    v.driftAngle += (targetSlip - v.driftAngle) * 0.15;
-    if (isDrifting) v.speed *= 0.992;
+      const targetSlip = isDrifting ? (leftInput ? -0.35 : 0.35) : 0;
+      v.driftAngle += (targetSlip - v.driftAngle) * 0.15;
+      if (isDrifting) v.speed *= 0.992;
 
-    const moveHeading = v.mesh.rotation.y + v.driftAngle;
-    const nx = v.mesh.position.x + Math.sin(moveHeading) * v.speed;
-    const nz = v.mesh.position.z + Math.cos(moveHeading) * v.speed;
-
-    if (!checkWallCollision(nx, nz, 1.4)) {
-      v.mesh.position.x = nx; v.mesh.position.z = nz;
+      const moveHeading = v.mesh.rotation.y + v.driftAngle;
+      v.vx = Math.sin(moveHeading) * v.speed;
+      v.vz = Math.cos(moveHeading) * v.speed;
     } else {
-      v.speed = -v.speed * 0.4;
+      v.vx = 0; v.vz = 0; v.speed = 0;
     }
-    player.x = v.mesh.position.x;
-    player.z = v.mesh.position.z;
-    camYaw = v.mesh.rotation.y + Math.PI;
+  }
 
-    const kmh = Math.round(Math.abs(v.speed) * 165);
-    document.getElementById('speed-num').innerText = kmh;
+  // 車輛物理更新：交流道爬升、高速撞建築物損毀爆炸、車撞車反彈、車撞路人致死
+  for (let i = 0; i < vehicles.length; i++) {
+    const v1 = vehicles[i];
+    if (v1.crashCooldown > 0) v1.crashCooldown--;
+    if (v1.exploded) continue;
+
+    // 計算交流道與高架橋高度
+    const surfY = getSurfaceElevation(v1.mesh.position.x, v1.mesh.position.z, v1.mesh.position.y);
+    v1.mesh.position.y += (surfY - v1.mesh.position.y) * 0.25;
+
+    const curSpeed = Math.hypot(v1.vx, v1.vz);
+    if (curSpeed > 0.001) {
+      const nx = v1.mesh.position.x + v1.vx;
+      const nz = v1.mesh.position.z + v1.vz;
+
+      if (!checkWallCollision(nx, nz, 1.4, v1.mesh.position.y)) {
+        v1.mesh.position.x = nx;
+        v1.mesh.position.z = nz;
+      } else {
+        // 高速正面撞擊建築物：扣除車身耐久度，歸零會直接爆炸！
+        if (curSpeed > 0.85 && v1.crashCooldown === 0 && gameMode === 'free') {
+          v1.crashCooldown = 25;
+          damageVehicle(v1, curSpeed > 1.25 ? 2 : 1);
+        }
+        v1.vx = -v1.vx * 0.55;
+        v1.vz = -v1.vz * 0.55;
+        v1.speed = -v1.speed * 0.45;
+      }
+
+      // 車輛高速撞擊行人與警察 (人被車撞也會死！)
+      if (curSpeed > 0.35 && v1.mesh.position.y < 1.5) {
+        npcs.forEach(n => {
+          if (!n.alive) return;
+          const dx = n.mesh.position.x - v1.mesh.position.x;
+          const dz = n.mesh.position.z - v1.mesh.position.z;
+          if (Math.hypot(dx, dz) < 2.3) {
+            const impactDmg = Math.round(curSpeed * 120);
+            n.hp -= impactDmg;
+            const knockAng = Math.atan2(dx, dz);
+            n.mesh.position.x += Math.sin(knockAng) * 3.5;
+            n.mesh.position.z += Math.cos(knockAng) * 3.5;
+            if (n.hp <= 0) {
+              n.alive = false;
+              n.mesh.rotation.x = Math.PI / 2;
+              n.bubble.style.display = 'none';
+              if (v1 === player.inVehicle && gameMode === 'free') addWanted(1);
+            }
+          }
+        });
+        footCops.forEach(c => {
+          if (!c.alive) return;
+          const dx = c.x - v1.mesh.position.x;
+          const dz = c.z - v1.mesh.position.z;
+          if (Math.hypot(dx, dz) < 2.3 && Math.abs(c.y - v1.mesh.position.y) < 2.0) {
+            c.hp -= Math.round(curSpeed * 130);
+            const knockAng = Math.atan2(dx, dz);
+            c.x += Math.sin(knockAng) * 3.2; c.z += Math.cos(knockAng) * 3.2;
+            c.mesh.position.set(c.x, c.y, c.z);
+            if (c.hp <= 0) {
+              c.alive = false;
+              c.mesh.rotation.x = Math.PI / 2;
+              if (v1 === player.inVehicle && gameMode === 'free') addWanted(2);
+            }
+          }
+        });
+      }
+
+      if (v1 !== player.inVehicle) {
+        v1.vx *= 0.92; v1.vz *= 0.92;
+      }
+    }
+
+    // 車與車之間的彈性反彈碰撞
+    for (let j = i + 1; j < vehicles.length; j++) {
+      const v2 = vehicles[j];
+      if (v2.exploded || Math.abs(v1.mesh.position.y - v2.mesh.position.y) > 2.5) continue;
+      const dx = v2.mesh.position.x - v1.mesh.position.x;
+      const dz = v2.mesh.position.z - v1.mesh.position.z;
+      const dist = Math.hypot(dx, dz);
+      const minSep = 3.4;
+
+      if (dist > 0.01 && dist < minSep) {
+        const nx = dx / dist, nz = dz / dist;
+        const overlap = (minSep - dist) * 0.55;
+        if (!checkWallCollision(v1.mesh.position.x - nx * overlap, v1.mesh.position.z - nz * overlap, 1.3, v1.mesh.position.y)) {
+          v1.mesh.position.x -= nx * overlap; v1.mesh.position.z -= nz * overlap;
+        }
+        if (!checkWallCollision(v2.mesh.position.x + nx * overlap, v2.mesh.position.z + nz * overlap, 1.3, v2.mesh.position.y)) {
+          v2.mesh.position.x += nx * overlap; v2.mesh.position.z += nz * overlap;
+        }
+        const rvx = v2.vx - v1.vx, rvz = v2.vz - v1.vz;
+        const velAlongNormal = rvx * nx + rvz * nz;
+        if (velAlongNormal < 0) {
+          const impulse = -(1 + 0.85) * velAlongNormal * 0.65;
+          v1.vx -= impulse * nx; v1.vz -= impulse * nz;
+          v2.vx += impulse * nx; v2.vz += impulse * nz;
+          v1.speed *= -0.45; v2.speed *= -0.45;
+        } else {
+          v1.vx -= nx * 0.25; v1.vz -= nz * 0.25;
+          v2.vx += nx * 0.25; v2.vz += nz * 0.25;
+        }
+      }
+    }
+  }
+
+  if (player.inVehicle) {
+    player.x = player.inVehicle.mesh.position.x;
+    player.y = player.inVehicle.mesh.position.y;
+    player.z = player.inVehicle.mesh.position.z;
+    camYaw = player.inVehicle.mesh.rotation.y + Math.PI;
+    document.getElementById('speed-num').innerText = Math.round(Math.abs(player.inVehicle.speed) * 165);
+    document.getElementById('elev-txt').innerText = player.y > 3.8 ? "🛣️ 路段：高架高速公路 (y=5.5m)" : (player.y > 0.5 ? "↗️ 路段：立體交流道匝道" : "🏙️ 路段：平面市區道路");
+  }
+
+  for (let i = explosions.length - 1; i >= 0; i--) {
+    const ex = explosions[i];
+    ex.scale += 0.35; ex.life--;
+    ex.mesh.scale.set(ex.scale, ex.scale, ex.scale);
+    ex.mesh.material.opacity = ex.life / 28;
+    if (ex.life <= 0) { scene.remove(ex.mesh); explosions.splice(i, 1); }
   }
 
   if (activeNavRoute.length >= 2 && tick % 8 === 0) {
@@ -1739,166 +2032,170 @@ function animate() {
     rebuild3DNavLine();
   }
 
+  // E 鍵互動提示檢測 (任務光圈、超商、車輛)
   const promptEl = document.getElementById('interact-prompt');
-  nearVehicle = null; nearStore = null;
+  nearVehicle = null; nearStore = null; nearMissionStarter = null;
+
+  if (!activeMission) {
+    for (let i = 0; i < missionRings.length; i++) {
+      const mr = missionRings[i];
+      mr.mesh.rotation.z += 0.04;
+      if (Math.hypot(player.x - mr.mission.startX, player.z - mr.mission.startZ) < 5.5 && player.y < 2.0) {
+        nearMissionStarter = mr.mission;
+        break;
+      }
+    }
+  } else {
+    destRing.rotation.z += 0.05;
+    if (Math.hypot(player.x - activeMission.endX, player.z - activeMission.endZ) < 7.5) {
+      alert(`🎉 任務完成：【${activeMission.title}】\n獲得報酬 NT$ ${activeMission.reward.toLocaleString()}！`);
+      player.money += activeMission.reward;
+      activeMission = null;
+      destRing.visible = false;
+      clearNavRoute();
+      document.getElementById('mission-title').innerText = "📌 環遊臺灣：自由探索中";
+      document.getElementById('mission-desc').innerText = "任務完成！前往其他縣市光圈按 E 可接取下一個環島任務。";
+      updateHUD();
+    }
+  }
+
   if (!player.inVehicle) {
     let minD = 6.0;
     vehicles.forEach(v => {
+      if (v.exploded) return;
       const d = Math.hypot(v.mesh.position.x - player.x, v.mesh.position.z - player.z);
-      if (d < minD) { minD = d; nearVehicle = v; }
+      if (d < minD && Math.abs(v.mesh.position.y - player.y) < 2.0) { minD = d; nearVehicle = v; }
     });
     enterableStores.forEach(st => {
       if (Math.hypot(st.counterX - player.x, st.counterZ - player.z) < 4.5) nearStore = st;
     });
+  }
 
-    if (nearStore) {
-      promptEl.style.display = 'flex';
-      document.getElementById('interact-label').innerText = `7-TWELVE ${nearStore.name} 結帳購物`;
-    } else if (nearVehicle) {
-      promptEl.style.display = 'flex';
-      document.getElementById('interact-label').innerText = `搶 ${nearVehicle.name}`;
-    } else {
-      promptEl.style.display = 'none';
-    }
+  if (nearMissionStarter) {
+    promptEl.style.display = 'flex';
+    document.getElementById('interact-label').innerText = `接取【${nearMissionStarter.title}】`;
+  } else if (nearStore) {
+    promptEl.style.display = 'flex';
+    document.getElementById('interact-label').innerText = `進入 7-TWELVE ${nearStore.name}`;
+  } else if (nearVehicle) {
+    promptEl.style.display = 'flex';
+    document.getElementById('interact-label').innerText = gameMode === 'edu' ? `搭乘 ${nearVehicle.name}` : `駕駛 ${nearVehicle.name}`;
   } else {
     promptEl.style.display = 'none';
   }
 
-  vehicles.forEach((v, idx) => {
-    if (v === player.inVehicle) return;
-    if (v.isPolice) {
+  // 警察追捕系統
+  if (gameMode === 'free') {
+    vehicles.forEach(v => {
+      if (v === player.inVehicle || v.exploded || !v.isPolice) return;
       if (v.mesh.userData.siren) {
-        v.mesh.userData.siren.material.color.setHex(Math.floor(tick / 10) % 2 === 0 ? 0xef4444 : 0x3b82f6);
+        v.mesh.userData.siren.material.color.setHex(Math.floor(tick / 8) % 2 === 0 ? 0xef4444 : 0x3b82f6);
       }
-      if (!v.hasOfficer) return;
+      if (!v.hasOfficer || player.wanted === 0) return;
 
-      const dx = player.x - v.mesh.position.x;
-      const dz = player.z - v.mesh.position.z;
-      const dist = Math.hypot(dx, dz);
-      const ang = Math.atan2(dx, dz);
+      const dx = player.x - v.mesh.position.x, dz = player.z - v.mesh.position.z;
+      const dist = Math.hypot(dx, dz), ang = Math.atan2(dx, dz);
       v.mesh.rotation.y = ang;
 
-      let blockedByCop = false;
-      for (let j = 0; j < vehicles.length; j++) {
-        if (idx !== j && vehicles[j].isPolice) {
-          if (Math.hypot(vehicles[j].mesh.position.x - v.mesh.position.x, vehicles[j].mesh.position.z - v.mesh.position.z) < 6.5) {
-            blockedByCop = true;
-            break;
-          }
-        }
-      }
-
-      if (dist > 12) {
-        const spd = (blockedByCop ? 0.12 : 0.36) + player.wanted * 0.03;
-        const px = v.mesh.position.x + Math.sin(ang) * spd;
-        const pz = v.mesh.position.z + Math.cos(ang) * spd;
-        if (!checkWallCollision(px, pz, 1.3)) { v.mesh.position.x = px; v.mesh.position.z = pz; }
+      if (dist > 13) {
+        const spd = 0.38 + player.wanted * 0.035;
+        v.vx = Math.sin(ang) * spd; v.vz = Math.cos(ang) * spd;
       } else {
-        v.hasOfficer = false;
-        spawnFootCop(v.mesh.position.x + 2.5, v.mesh.position.z + 1.5);
-        spawnFootCop(v.mesh.position.x - 2.5, v.mesh.position.z - 1.5);
+        v.vx = 0; v.vz = 0; v.hasOfficer = false;
+        spawnFootCop(v.mesh.position.x + 2.6, v.mesh.position.y, v.mesh.position.z + 1.5);
+        spawnFootCop(v.mesh.position.x - 2.6, v.mesh.position.y, v.mesh.position.z - 1.5);
       }
-    }
-  });
+    });
 
-  footCops.forEach((c, cIdx) => {
-    if (!c.alive) return;
-    const dx = player.x - c.x;
-    const dz = player.z - c.z;
-    const dist = Math.hypot(dx, dz);
-    const ang = Math.atan2(dx, dz) + ((cIdx % 2 === 0 ? 1 : -1) * 0.25);
-    c.mesh.rotation.y = Math.atan2(dx, dz);
+    footCops.forEach((c, cIdx) => {
+      if (!c.alive) return;
+      const dx = player.x - c.x, dz = player.z - c.z;
+      const dist = Math.hypot(dx, dz);
+      const ang = Math.atan2(dx, dz) + ((cIdx % 2 === 0 ? 1 : -1) * 0.28);
+      c.mesh.rotation.y = Math.atan2(dx, dz);
 
-    if (dist > 7.5) {
-      const nx = c.x + Math.sin(ang) * 0.18;
-      const nz = c.z + Math.cos(ang) * 0.18;
-      if (!checkWallCollision(nx, nz, 0.6)) { c.x = nx; c.z = nz; }
-      c.mesh.position.set(c.x, 0, c.z);
-    }
-    if (dist < 34) {
-      c.shootTimer--;
-      if (c.shootTimer <= 0) {
-        c.shootTimer = 55;
-        const shootAng = Math.atan2(dx, dz);
-        const eb = new THREE.Mesh(new THREE.SphereGeometry(0.18), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
-        eb.position.set(c.x, 1.5, c.z);
-        scene.add(eb);
-        enemyBullets.push({ mesh: eb, vx: Math.sin(shootAng) * 1.6, vz: Math.cos(shootAng) * 1.6, life: 45 });
+      if (dist > 8.0) {
+        const nx = c.x + Math.sin(ang) * 0.2, nz = c.z + Math.cos(ang) * 0.2;
+        if (!checkWallCollision(nx, nz, 0.6, c.y)) { c.x = nx; c.z = nz; }
+        c.mesh.position.set(c.x, c.y, c.z);
       }
-    }
-  });
-
-  for (let i = enemyBullets.length - 1; i >= 0; i--) {
-    const eb = enemyBullets[i];
-    eb.mesh.position.x += eb.vx; eb.mesh.position.z += eb.vz; eb.life--;
-    if (Math.hypot(eb.mesh.position.x - player.x, eb.mesh.position.z - player.z) < 1.3) {
-      if (!isGodMode) {
-        player.hp -= 6;
-        updateHUD();
-        if (player.hp <= 0) {
-          alert("【 WASTED 慘遭全台灣警力擊倒 】");
-          player.hp = 100; buyItem('clear', 0);
+      if (dist < 38) {
+        c.shootTimer--;
+        if (c.shootTimer <= 0) {
+          c.shootTimer = Math.max(28, 55 - player.wanted * 5);
+          const shootAng = Math.atan2(dx, dz);
+          const eb = new THREE.Mesh(new THREE.SphereGeometry(0.18), new THREE.MeshBasicMaterial({ color: 0xef4444 }));
+          eb.position.set(c.x, c.y + 1.5, c.z);
+          scene.add(eb);
+          enemyBullets.push({ mesh: eb, vx: Math.sin(shootAng) * 1.75, vz: Math.cos(shootAng) * 1.75, life: 45 });
         }
       }
-      eb.life = 0;
-    }
-    if (eb.life <= 0) { scene.remove(eb.mesh); enemyBullets.splice(i, 1); }
-  }
-
-  for (let i = bullets.length - 1; i >= 0; i--) {
-    const b = bullets[i];
-    b.mesh.position.x += b.vx; b.mesh.position.z += b.vz; b.life--;
-    npcs.forEach(n => {
-      if (n.alive && Math.hypot(b.mesh.position.x - n.mesh.position.x, b.mesh.position.z - n.mesh.position.z) < 1.5) {
-        n.alive = false; n.mesh.rotation.x = Math.PI / 2; n.bubble.style.display = 'none';
-        player.money += 400; addWanted(1); updateHUD();
-      }
     });
-    footCops.forEach(c => {
-      if (c.alive && Math.hypot(b.mesh.position.x - c.x, b.mesh.position.z - c.z) < 1.5) {
-        c.alive = false; c.mesh.rotation.x = Math.PI / 2;
-        addWanted(1); updateHUD();
-      }
-    });
-    if (b.life <= 0) { scene.remove(b.mesh); bullets.splice(i, 1); }
-  }
 
-  missionRing.rotation.z += 0.04;
-  if (!activeMission) {
-    const m = missions[0];
-    if (Math.hypot(player.x - m.startX, player.z - m.startZ) < 5.0) {
-      activeMission = m;
-      document.getElementById('mission-title').innerText = m.title;
-      document.getElementById('mission-desc').innerText = m.desc;
-      missionRing.position.set(m.endX, 0.22, m.endZ);
-      missionRing.material.color.setHex(0x4ade80);
-      computeGPSRoute(m.endX, m.endZ, "台北 101 大樓 (任務終點)");
+    for (let i = enemyBullets.length - 1; i >= 0; i--) {
+      const eb = enemyBullets[i];
+      eb.mesh.position.x += eb.vx; eb.mesh.position.z += eb.vz; eb.life--;
+      if (Math.hypot(eb.mesh.position.x - player.x, eb.mesh.position.z - player.z) < 1.4) {
+        if (!isGodMode) {
+          player.hp -= 7; updateHUD();
+          if (player.hp <= 0) { alert("【 WASTED 慘遭全台灣警力擊倒 】"); player.hp = 100; buyItem('clear', 0); }
+        }
+        eb.life = 0;
+      }
+      if (eb.life <= 0) { scene.remove(eb.mesh); enemyBullets.splice(i, 1); }
     }
-  } else if (Math.hypot(player.x - activeMission.endX, player.z - activeMission.endZ) < 7.0) {
-    alert(`🎉 環島任務完成：【${activeMission.title}】\n獲得報酬 NT$ ${activeMission.reward.toLocaleString()}！`);
-    player.money += activeMission.reward;
-    activeMission = null;
-    clearNavRoute();
-    missionRing.position.set(missions[0].startX, 0.22, missions[0].startZ);
-    missionRing.material.color.setHex(0xfacc15);
-    document.getElementById('mission-title').innerText = "📌 目前任務：全台灣不規則公路探索";
-    document.getElementById('mission-desc').innerText = "任務已完成！按 M 打開台灣衛星地圖（可滾輪放大）規劃下一段彎道路線。";
-    updateHUD();
+
+    for (let i = bullets.length - 1; i >= 0; i--) {
+      const b = bullets[i];
+      b.mesh.position.x += b.vx; b.mesh.position.z += b.vz; b.life--;
+
+      for (let vIdx = 0; vIdx < vehicles.length; vIdx++) {
+        const v = vehicles[vIdx];
+        if (v.exploded || v === player.inVehicle) continue;
+        if (Math.hypot(b.mesh.position.x - v.mesh.position.x, b.mesh.position.z - v.mesh.position.z) < 2.2) {
+          b.life = 0;
+          damageVehicle(v, 1);
+          addWanted(1);
+          break;
+        }
+      }
+
+      if (b.life > 0) {
+        npcs.forEach(n => {
+          if (n.alive && Math.hypot(b.mesh.position.x - n.mesh.position.x, b.mesh.position.z - n.mesh.position.z) < 1.4) {
+            n.hp -= b.dmg; b.life = 0;
+            if (n.hp <= 0) { n.alive = false; n.mesh.rotation.x = Math.PI / 2; n.bubble.style.display = 'none'; player.money += 400; }
+            addWanted(1); updateHUD();
+          }
+        });
+      }
+
+      if (b.life > 0) {
+        footCops.forEach(c => {
+          if (c.alive && Math.hypot(b.mesh.position.x - c.x, b.mesh.position.z - c.z) < 1.4) {
+            c.hp -= b.dmg; b.life = 0;
+            if (c.hp <= 0) { c.alive = false; c.mesh.rotation.x = Math.PI / 2; }
+            addWanted(1); updateHUD();
+          }
+        });
+      }
+
+      if (b.life <= 0) { scene.remove(b.mesh); bullets.splice(i, 1); }
+    }
   }
 
   npcs.forEach(n => {
     if (!n.alive) return;
     if (Math.abs(n.mesh.position.x - player.x) > 80 || Math.abs(n.mesh.position.z - player.z) > 80) {
-      n.bubble.style.display = 'none';
-      return;
+      n.bubble.style.display = 'none'; return;
     }
     const nx = n.mesh.position.x + Math.sin(n.dir) * 0.04;
     const nz = n.mesh.position.z + Math.cos(n.dir) * 0.04;
-    if (!checkWallCollision(nx, nz, 0.6)) { n.mesh.position.x = nx; n.mesh.position.z = nz; }
+    if (!checkWallCollision(nx, nz, 0.6, 0)) { n.mesh.position.x = nx; n.mesh.position.z = nz; }
     else n.dir += Math.PI;
     n.mesh.rotation.y = n.dir;
 
-    const headPos = new THREE.Vector3(n.mesh.position.x, 3.0, n.mesh.position.z);
+    const headPos = new THREE.Vector3(n.mesh.position.x, 2.9, n.mesh.position.z);
     const dCam = headPos.distanceTo(camera.position);
     headPos.project(camera);
     if (headPos.z < 1 && dCam < 38) {
@@ -1909,11 +2206,11 @@ function animate() {
   });
 
   const cDist = player.inVehicle ? 11.5 : 8.2;
-  const cHeight = player.inVehicle ? 4.8 : 3.6;
+  const cHeight = (player.inVehicle ? 4.8 : 3.6) + player.y;
   camera.position.x = player.x + Math.sin(camYaw) * cDist;
   camera.position.z = player.z + Math.cos(camYaw) * cDist;
   camera.position.y = cHeight + Math.sin(camPitch) * 4.2;
-  camera.lookAt(player.x, 1.8, player.z);
+  camera.lookAt(player.x, player.y + 1.8, player.z);
 
   if (tick % 15 === 0) updateHUD();
   drawMinimap();
